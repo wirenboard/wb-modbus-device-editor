@@ -1,6 +1,8 @@
-import traceback
 import logging
-from pymodbus.client import ModbusSerialClient
+import traceback
+
+from pymodbus.client.sync import ModbusSerialClient
+
 from . import ui_manager
 
 
@@ -24,9 +26,7 @@ class ModbusRTUClient:
 
     def read_holding(self, slave_id, reg_address):
         try:
-            data = self.client.read_holding_registers(
-                address=reg_address, slave=slave_id
-            )
+            data = self.client.read_holding_registers(address=reg_address, slave=slave_id)
             value = data.registers
         except Exception as e:
             msg = "%s" % e.args
@@ -39,9 +39,7 @@ class ModbusRTUClient:
 
     def write_holding(self, slave_id, reg_address, value):
         try:
-            res = self.client.write_register(
-                address=reg_address, slave=slave_id, value=int(value)
-            )
+            res = self.client.write_register(address=reg_address, slave=slave_id, value=int(value))
 
             if "IllegalValue" in "%s" % res:
                 raise Exception("IllegalValue")

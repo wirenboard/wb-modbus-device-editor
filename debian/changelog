@@ -1,0 +1,5 @@
+wb-modbus-device-editor (1.0.0) stable; urgency=medium
+
+  * Add debianization, no functional changes
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.ru>  Thu, 08 Feb 2024 12:45:25 +0300
