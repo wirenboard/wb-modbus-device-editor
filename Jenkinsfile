@@ -1,2 +1,3 @@
 buildDebArchAll defaultRunLintian: true,
-                defaultRunPythonChecks: false
+                defaultRunPythonChecks: false,
+                 repos: ['devTools']
