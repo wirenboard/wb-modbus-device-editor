@@ -2,3 +2,4 @@ templates/wb/
 modules/__pycache__/
 *_backup.py
 .gitignore
+.venv

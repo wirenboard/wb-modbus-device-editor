@@ -4,7 +4,7 @@ Section: misc
 Priority: optional
 Build-Depends: debhelper-compat (= 13), dh-python, python3, python3-tk
 Standards-Version: 4.5.1
-Homepage: https://github.com/wirenboard/py-modbus-device-editor
+Homepage: https://github.com/wirenboard/wb-modbus-device-editor
 
 Package: wb-modbus-device-editor
 Architecture: all
