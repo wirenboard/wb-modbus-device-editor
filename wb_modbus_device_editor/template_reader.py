@@ -1,11 +1,12 @@
 import json
 import traceback
 
+
 class TemplateReader:
     template = None
 
     def read_template(self, file_patch):
-        with open(file_patch, "r") as j:
+        with open(file_patch, "r", encoding="utf-8") as j:
             self.template = json.load(j)
 
     def get_title(self):
@@ -26,19 +27,17 @@ class TemplateReader:
     def get_params_by_group(self, group_id):
         res = []
         params = self.get_params()
-        for i in range(len(params)):
-            param = params[i]
+        for param in params:
             if param.get("group") == group_id:
                 res.append(param)
         return res
 
     def get_group_by_param_id(self, param_id):
         params = self.get_params()
-        for i in range(len(params)):
+        for (i,) in range(len(params)):
             param = params[i]
             if param.get("id") == param_id:
                 return param.get("group")
-                
 
     def get_params_without_group(self):
         res = {}
@@ -61,7 +60,7 @@ class TemplateReader:
             else:
                 return string
         else:
-            return string               
+            return string
 
     def get_enum_dic(self, param):
         enum = param["enum"]
@@ -69,7 +68,7 @@ class TemplateReader:
 
         for i in range(len(enum_titles)):
             enum_titles[i] = self.get_translate(enum_titles[i])
-        
+
         dic = {"enum": enum, "enum_titles": enum_titles}
         return dic
 
