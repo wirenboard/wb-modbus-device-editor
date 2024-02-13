@@ -7,6 +7,6 @@ Standards-Version: 4.5.1
 Homepage: https://github.com/wirenboard/py-modbus-device-editor
 
 Package: wb-modbus-device-editor
-Architecture: amd64
+Architecture: all
 Depends: ${misc:Depends}, python3:any (>= 3.10.0), python3-tk, python3-pymodbus
 Description: Wiren Board modbus device editor
