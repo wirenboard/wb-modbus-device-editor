@@ -14,6 +14,8 @@ linux() {
 windows() {
 	wine pip install -r requirements.txt
 	wine pyinstaller --distpath $DIST_DIR/windows ./wb-modbus-device-editor.spec
+	chmod -R 755 $DIST_DIR
+	ls -l $DIST_DIR
 }
 
 clean() {
