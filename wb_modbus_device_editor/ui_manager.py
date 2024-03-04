@@ -332,9 +332,8 @@ class UiManager:
 
         if default in dic["enum"]:
             index = dic["enum"].index(default)
-        else:
-            index = 0
-        combobox.current(index)
+            combobox.current(index)
+
         return combobox
 
     def get_combobox_format(self, value_type):

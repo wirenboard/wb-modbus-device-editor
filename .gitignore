@@ -3,3 +3,7 @@ modules/__pycache__/
 *_backup.py
 .gitignore
 .venv
+.venv_docker
+dist
+build
+__pycache__/
