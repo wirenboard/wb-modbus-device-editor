@@ -1,3 +1,2 @@
 pymodbus==3.6.4
 pyserial==3.5
-pyinstaller==6.4.0
