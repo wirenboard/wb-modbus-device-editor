@@ -371,10 +371,11 @@ class App:
 
     # взято из интернета: https://ru.stackoverflow.com/a/1413836
     def numeral_noun_declension(self, number, nominative_singular, genetive_singular, nominative_plural):
+        diglast = number % 10
         return (
             (number in range(5, 20))
             and nominative_plural
-            or (1 in (number, (diglast := number % 10)))
+            or (1 in (number, diglast))
             and nominative_singular
             or ({number, diglast} & {2, 3, 4})
             and genetive_singular

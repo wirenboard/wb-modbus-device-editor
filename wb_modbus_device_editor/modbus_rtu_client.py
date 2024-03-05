@@ -1,9 +1,10 @@
 import logging
 import traceback
 
-from pymodbus.client.sync import ModbusSerialClient
-
-from . import ui_manager
+try:
+    from pymodbus.client import ModbusSerialClient
+except ImportError:
+    from pymodbus.client.sync import ModbusSerialClient
 
 
 class ModbusRTUClient:
