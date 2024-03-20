@@ -1,4 +1,4 @@
-templates/wb/
+templates
 modules/__pycache__/
 *_backup.py
 .gitignore
@@ -7,3 +7,4 @@ modules/__pycache__/
 dist
 build
 __pycache__/
+.vscode

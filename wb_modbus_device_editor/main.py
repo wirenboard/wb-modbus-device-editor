@@ -2,13 +2,10 @@ import sys
 import tkinter
 import traceback
 
-from . import modbus_rtu_client, template_reader, ui_manager
+from . import modbus_rtu_client, template_manager, ui_manager
 
 
 class App:
-    reader = None
-    ui = None
-    # mb = None
     max_col = 2  # количество колонок с виджетами +1
 
     def __init__(self):
@@ -18,14 +15,17 @@ class App:
         self.ui.btn_read_params.bind("<ButtonPress-1>", self.btn_read_params_click)
         self.ui.btn_write_params.bind("<ButtonPress-1>", self.btn_write_params_click)
 
-        self.reader = template_reader.TemplateReader()
+        self.template_manager = template_manager.TemplateManager()
+        self.template_manager.update_templates()
+        self._template = None
 
         self.ui.write_log("Настройте параметры подключения и откройте шаблон.")
         self.ui.win.mainloop()
 
     # действие при нажатии на кнопку Открыть шаблон
     def btn_open_template_click(self, event):
-        file_patch = self.ui.open_file()
+        templates_dir = self.template_manager.templates_dir
+        file_patch = self.ui.open_file(templates_dir)
         if len(file_patch) > 0:
             # удаляем виджеты от предыдущего шаблона
             self.ui.delete_widgets()
@@ -42,16 +42,15 @@ class App:
 
     def create_interface(self):
         # если у нас есть параметры без групп, например, режимы — создаём для них отдельную вкладку
-        params_without_group = self.reader.get_params_without_group()
+        parameters = self._template.get_parameters_by_group_id(None)
 
-        if len(params_without_group) > 0:
+        if len(parameters) > 0:
             parent = self.ui.create_tab("mode_params_group", "Режим")
             curr_frame = parent.curr_frame
 
             # перебираем безгрупные параметры и создаём для них виджеты
-            for i, _ in enumerate(params_without_group):
-                param = params_without_group[i]
-                self.create_widget(widget_id=param["id"], parent=parent, param=param)
+            for id, parameter in parameters.items():
+                self.create_widget(id, parent, parameter)
 
         # создаём вкладки из групп без поля group
         if self.create_pages():
@@ -64,9 +63,14 @@ class App:
         self.ui.write_log("Открываю файл {}".format(file_patch))
         try:
             # парсинг
-            self.reader.read_template(file_patch)
-            title = self.reader.get_device_name()
-            self.ui.set_left_frame_title("Настройки устройства {}".format(title))
+            self._template = self.template_manager.templates[file_patch]
+            self._template.update_properties()
+            if self._template.properties["title"]:
+                title = self._template.translate(self._template.properties["title"])
+            else:
+                title = self._template.properties["device"]["name"]
+
+            self.ui.set_left_frame_title(f"Настройки устройства {title}")
             return True
         except Exception as e:
             self.ui.write_log("Ошибка:")
@@ -78,16 +82,13 @@ class App:
         self.ui.write_log("Создаю вкладки.")
 
         try:
-            groups = self.reader.get_groups()
+            groups = self._template.properties["device"]["groups"]
 
-            for i, _ in enumerate(groups):
-                group = groups[i]
-                title = self.reader.get_translate(group.get("title"))
-                group_id = group.get("id")
-                # print(group)
+            for id, group in groups.items():
                 # если у группы нет родителя, то создаём вкладку
                 if group.get("group") is None:
-                    group_widget = self.ui.create_tab(group_id, title)
+                    title = self._template.translate(group["title"])
+                    group_widget = self.ui.create_tab(id, title)
                     group_widget.condition = group.get("condition")
 
             return True
@@ -100,14 +101,12 @@ class App:
     def create_groups(self):
         self.ui.write_log("Создаю группы.")
 
-        groups = self.reader.get_groups()
+        groups = self._template.properties["device"]["groups"]
 
         try:
-            for i, _ in enumerate(groups):
-                group = groups[i]
-                title = self.reader.get_translate(group.get("title"))
+            for id, group in groups.items():
+                title = self._template.translate(group["title"])
                 parent_id = group.get("group")
-                group_id = group.get("id")
                 parent = self.ui.get_widget(parent_id)
 
                 # а тут магия распределения групп по вкладкам
@@ -127,21 +126,21 @@ class App:
 
                     # создаём новую группу с учётом магии выше
                     group_widget = self.ui.create_group(
-                        curr_frame, group_id, title, side=tkinter.LEFT, anchor=tkinter.NW
+                        curr_frame, id, title, side=tkinter.LEFT, anchor=tkinter.NW
                     )
                     # добавляем поле condition — это для того, чтобы понимать, надо ли показывать
                     # эту группу при выбранных параметрах
                     group_widget.condition = group.get("condition")
-                    # self.ui.create_label(group_widget, group_id, group_id)
+                    # self.ui.create_label(group_widget, id, id)
                 else:
                     # а если родитель у группы есть, то получаем текущий виджет с нужным id
-                    group_widget = self.ui.get_widget(group_id)
+                    group_widget = self.ui.get_widget(id)
 
                 # если виджет группы существует — создаём параметры в ней
                 if group_widget is not None:
-                    self.create_params(group_id, group_widget)
+                    self.create_params(id, group_widget)
                 else:
-                    print("Виджет для группы {} не существует".format(group_id))
+                    print("Виджет для группы {} не существует".format(id))
             return True
         except Exception as e:
             self.ui.write_log("Ошибка:")
@@ -149,16 +148,13 @@ class App:
             return False
 
     def create_params(self, group_id, group_widget):
-        params = self.reader.get_params_by_group(group_id)
+        parameters = self._template.get_parameters_by_group_id(group_id)
         parent = self.get_current_frame(group_widget)
 
-        if len(params) > 0:
-            for i, _ in enumerate(params):
-                param = params[i]
-                id = param["id"]
-                widget = self.create_widget(widget_id=id, parent=parent, param=param)
-                widget.condition = param.get("condition")
-                parent.condition = param.get("condition")
+        for id, parameter in parameters.items():
+            widget = self.create_widget(id, parent, parameter)
+            widget.condition = parameter.get("condition")
+            parent.condition = parameter.get("condition")
 
     def get_value_type_type(self, param):
         if "enum" in param:
@@ -169,24 +165,23 @@ class App:
 
         return "int"
 
-    def create_widget(self, widget_id, parent, param):
+    def create_widget(self, id, parent, param):
         value_type = self.get_value_type_type(
             param
-        )  # от типа значения зависит ти и настройки создаваемого виджета
+        )  # от типа значения зависит тип и настройки создаваемого виджета
 
-        param_id = param["id"]
-        param_title = self.reader.get_translate(param.get("title"))
-        param_default = param.get("default")
+        title = self._template.translate(param.get("title"))
+        default = param.get("default")
 
         # есть перечисление — создаём combobox
         if value_type == "enum":
-            cmbx_dic = self.reader.get_enum_dic(param)
+            enum = self._template.get_parameter_enum(id)
             widget = self.ui.create_combobox(
                 parent=parent,
-                id=param_id,
-                title=param_title,
-                dic=cmbx_dic,
-                default=param_default,
+                id=id,
+                title=title,
+                dic=enum,
+                default=default,
                 width=50,
                 side=tkinter.TOP,
                 anchor=tkinter.NW,
@@ -199,12 +194,12 @@ class App:
             description = param.get("description")
             widget = self.ui.create_spinbox(
                 parent=parent,
-                id=param_id,
-                title=param_title,
+                id=id,
+                title=title,
                 min_=min_,
                 max_=max_,
                 value_type=value_type,
-                default=param_default,
+                default=default,
                 width=5,
                 description=description,
                 side=tkinter.TOP,
@@ -228,14 +223,13 @@ class App:
         values = self.ui.get_values()
         widgets = self.ui.get_widgets()
 
-        for key in widgets:
-            item = widgets[key]
+        for key, item in widgets.items():
 
-            if item.type == "group" or item.type == "spinbox" or item.type == "combobox":
+            if item.type in ["group", "spinbox", "combobox"]:
                 if hasattr(item, "condition"):
                     condition = item.condition
                     if condition != None:
-                        visible = self.reader.calc_condition(condition, values)
+                        visible = self._template.calc_parameter_condition(condition, values)
                     else:
                         visible = True
 
@@ -251,7 +245,7 @@ class App:
         slave_id = int(mb_params["slave_id"])
         if client.connect():
             self.ui.write_log("Открыл порт")
-            params = self.reader.get_params()
+            params = self._template.properties["parameters"]
             read_count = self.read_params_from_modbus(client, slave_id, params)
             if read_count > 0:
                 self.ui.write_log(
@@ -324,7 +318,7 @@ class App:
         slave_id = int(mb_params["slave_id"])
         if client.connect():
             self.ui.write_log("Открыл порт")
-            params = self.reader.get_params()
+            params = self._template["parameters"]
             write_count = self.write_params_to_modbus(client, slave_id, params)
             if write_count > 0:
                 self.ui.write_log(
@@ -384,7 +378,7 @@ class App:
 
 
 def main(argv):
-    app = App()
+    App()
 
 
 if __name__ == "__main__":
