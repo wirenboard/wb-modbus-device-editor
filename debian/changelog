@@ -1,3 +1,9 @@
+wb-modbus-device-editor (1.1.0) stable; urgency=medium
+
+  * Add templates downloading from github
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.com>  Wed, 20 Mar 2024 09:45:15 +0300
+
 wb-modbus-device-editor (1.0.1) stable; urgency=medium
 
   * Add deb package and windows exe building at Jenkins
