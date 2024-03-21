@@ -1,7 +1,6 @@
 pymodbus==3.6.4
 pyserial==3.5
-tarfile
 jinja2
-jsonslicer
+commentjson
 requests
 semantic_version

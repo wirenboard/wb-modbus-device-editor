@@ -63,8 +63,7 @@ class App:
         self.ui.write_log("Открываю файл {}".format(file_patch))
         try:
             # парсинг
-            self._template = self.template_manager.templates[file_patch]
-            self._template.update_properties()
+            self._template = self.template_manager.open_template(file_patch)
             if self._template.properties["title"]:
                 title = self._template.translate(self._template.properties["title"])
             else:
@@ -83,13 +82,14 @@ class App:
 
         try:
             groups = self._template.properties["device"]["groups"]
+            if groups is not None:
 
-            for id, group in groups.items():
-                # если у группы нет родителя, то создаём вкладку
-                if group.get("group") is None:
-                    title = self._template.translate(group["title"])
-                    group_widget = self.ui.create_tab(id, title)
-                    group_widget.condition = group.get("condition")
+                for id, group in groups.items():
+                    # если у группы нет родителя, то создаём вкладку
+                    if group.get("group") is None:
+                        title = self._template.translate(group["title"])
+                        group_widget = self.ui.create_tab(id, title)
+                        group_widget.condition = group.get("condition")
 
             return True
         except Exception as e:

@@ -2,9 +2,9 @@ import os
 import tarfile
 
 import jinja2
-import jsonslicer
 import requests
 import semantic_version
+import commentjson
 
 
 class Template:
@@ -23,18 +23,15 @@ class Template:
 
     def _get_template_basic_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
-            for info in jsonslicer.JsonSlicer(
-                json_template, (""), path_mode="full", yajl_allow_comments=True
-            ):
-                dict_info = info[0]
-                basic_info = {
-                    "title": dict_info.get("title", None),
-                    "device_type": dict_info.get("device_type", None),
-                    "group": dict_info.get("device_type", None),
-                    "deprecated": dict_info.get("deprecated", None),
-                    "translates": dict_info.get("translates", None),
-                }
-                return basic_info
+            dict_info = commentjson.load(json_template)
+            basic_info = {
+                "title": dict_info.get("title", None),
+                "device_type": dict_info.get("device_type", None),
+                "group": dict_info.get("device_type", None),
+                "deprecated": dict_info.get("deprecated", None),
+                "translates": dict_info.get("translates", None),
+            }
+            return basic_info
 
     def _convert_list_to_dict(self, source):
         if source == None or type(source) == dict:
@@ -49,23 +46,20 @@ class Template:
 
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
-            for info in jsonslicer.JsonSlicer(
-                json_template, (""), path_mode="full", yajl_allow_comments=True
-            ):
-                dict_info = info[0]
-                groups = dict_info["device"].get("groups")  # groups and parameters mey have dict type
-                parameters = dict_info["device"].get("parameters")
-                full_info = {
-                    "title": dict_info.get("title", None),
-                    "device": {
-                        "name": dict_info["device"]["name"],
-                        "groups": self._convert_list_to_dict(groups),
-                        "parameters": self._convert_list_to_dict(parameters),
-                        "translations": dict_info["device"].get("translations"),
-                        "setup": dict_info["device"].get("setup", None),
-                    },
-                }
-                return full_info
+            dict_info = commentjson.load(json_template)
+            groups = dict_info["device"].get("groups")  # groups and parameters mey have dict type
+            parameters = dict_info["device"].get("parameters")
+            full_info = {
+                "title": dict_info.get("title", None),
+                "device": {
+                    "name": dict_info["device"]["name"],
+                    "groups": self._convert_list_to_dict(groups),
+                    "parameters": self._convert_list_to_dict(parameters),
+                    "translations": dict_info["device"].get("translations"),
+                    "setup": dict_info["device"].get("setup", None),
+                },
+            }
+            return full_info
 
     def update_properties(self):
         self._properties = self._get_template_full_info(self._template_path)
@@ -76,9 +70,10 @@ class Template:
 
         parameters = self._properties["device"]["parameters"]
         result = {}
-        for id, parameter in parameters.items():
-            if parameter.get("group") == group_id:
-                result.update({id: parameter})
+        if parameters is not None:
+            for id, parameter in parameters.items():
+                if parameter.get("group") == group_id:
+                    result.update({id: parameter})
         return result
 
     def get_parameter_enum(self, parameter_id) -> dict:
@@ -93,14 +88,14 @@ class Template:
     def calc_parameter_condition(self, condition, values):
 
         try:
-            condition = condition.replace("||", " or ").replace("&&", " and ").replace("!", " not ")
+            condition = condition.replace("||", " or ").replace("&&", " and ")
             return eval(condition, {"__builtins__": None}, values)
         except Exception as error:
             raise RuntimeError(f"Ошибка в выражении: {condition}\n") from error
 
     def translate(self, title, language="ru"):
         if (
-            "translations" in self._properties["device"]
+            self._properties["device"]["translations"] is not None
             and language in self._properties["device"]["translations"]
         ):
             return self._properties["device"]["translations"][language].get(title, title)
@@ -186,15 +181,18 @@ class TemplateManager:
             with open(self._version_filepath, "w", encoding="utf-8") as version_file:
                 version_file.write(latest_version)
 
-        for template_name in os.listdir(self._templates_dir):
+            for template_name in os.listdir(self._templates_dir):
 
-            if template_name == self._VERSION_FILENAME:
-                continue
+                if template_name == self._VERSION_FILENAME:
+                    continue
 
-            template_path = os.path.abspath(os.path.join(self._templates_dir, template_name))
-            template = Template(template_path)
-            if template.basic_properties.get("deprecated", None):
-                os.remove(template_path)
-                continue
+                template_path = os.path.abspath(os.path.join(self._templates_dir, template_name))
+                template = Template(template_path)
+                if template.basic_properties.get("deprecated", None):
+                    os.remove(template_path)
+                    continue
 
-            self._templates[template_path] = template
+    def open_template(self,template_path):
+        template = Template(template_path)
+        template.update_properties()
+        return template
