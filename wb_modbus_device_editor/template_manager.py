@@ -94,8 +94,8 @@ class Template:
 
         try:
             condition = condition.replace("||", " or ").replace("&&", " and ").replace("!", " not ")
-            return eval(condition, {}, values)
-        except (SyntaxError, SyntaxError) as error:
+            return eval(condition, {"__builtins__": None}, values)
+        except Exception as error:
             raise RuntimeError(f"Ошибка в выражении: {condition}\n") from error
 
     def translate(self, title, language="ru"):
@@ -111,7 +111,8 @@ class Template:
 class TemplateManager:
     _DEFAULT_TEMPLATES_DIR = "templates"
     _VERSION_FILENAME = "version"
-    _RELEASE_URL = "https://api.github.com/repos/wirenboard/wb-mqtt-serial/releases/latest"
+    _OWNER = "wirenboard"
+    _REPO = "wb-mqtt-serial"
 
     def __init__(self, templates_dir: str = _DEFAULT_TEMPLATES_DIR) -> None:
         self._templates_dir = templates_dir
@@ -133,7 +134,17 @@ class TemplateManager:
                 member.name = os.path.basename(member.name)
                 yield member
 
-    def _download_templates(self, tarball_url, templates_dir):
+    def _get_latest_master_tag(self, owner, repo):
+        url = f"https://api.github.com/repos/{owner}/{repo}/tags"
+        tags = requests.get(url, timeout=1).json()  # get 30 latest tags bu default
+        for tag in tags:
+            version = semantic_version.Version.parse(tag["name"].replace("v", ""))
+            if version[3:4] == ((),):  # master tags haven't prerelease and build parts
+                return tag["name"]
+
+    def _download_templates(self, owner, repo, tag, templates_dir):
+        tarball_url = f"https://api.github.com/repos/{owner}/{repo}/tarball/tags/{tag}"
+        # release_info = requests.get(release_url, timeout=1).json()
         source_raw = requests.get(tarball_url, timeout=1, stream=True)
         source_tar = tarfile.open(fileobj=source_raw.raw, mode="r|gz")
         source_tar.extractall(
@@ -158,8 +169,8 @@ class TemplateManager:
                 continue
 
     def update_templates(self):
-        response = requests.get(self._RELEASE_URL, timeout=1).json()
-        latest_version = response["tag_name"].removeprefix("v")
+        latest_tag = self._get_latest_master_tag(self._OWNER, self._REPO)
+        latest_version = latest_tag.replace("v", "")
         current_version = None
 
         if os.path.exists(self._version_filepath):
@@ -171,7 +182,7 @@ class TemplateManager:
             or current_version is None
             or (semantic_version.Version(latest_version) > semantic_version.Version(current_version))
         ):
-            self._download_templates(response["tarball_url"], self._templates_dir)
+            self._download_templates(self._OWNER, self._REPO, latest_tag, self._templates_dir)
             with open(self._version_filepath, "w", encoding="utf-8") as version_file:
                 version_file.write(latest_version)
 

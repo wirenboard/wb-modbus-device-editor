@@ -1,2 +1,7 @@
 pymodbus==3.6.4
 pyserial==3.5
+tarfile
+jinja2
+jsonslicer
+requests
+semantic_version
