@@ -86,7 +86,7 @@ class App:
 
                 for id, group in groups.items():
                     # если у группы нет родителя, то создаём вкладку
-                    if group.get("group") is None:
+                    if not group.get("group"):
                         title = self._template.translate(group["title"])
                         group_widget = self.ui.create_tab(id, title)
                         group_widget.condition = group.get("condition")
@@ -131,7 +131,6 @@ class App:
                     # добавляем поле condition — это для того, чтобы понимать, надо ли показывать
                     # эту группу при выбранных параметрах
                     group_widget.condition = group.get("condition")
-                    # self.ui.create_label(group_widget, id, id)
                 else:
                     # а если родитель у группы есть, то получаем текущий виджет с нужным id
                     group_widget = self.ui.get_widget(id)

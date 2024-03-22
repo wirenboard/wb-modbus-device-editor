@@ -1,10 +1,10 @@
 import os
 import tarfile
 
+import commentjson
 import jinja2
 import requests
 import semantic_version
-import commentjson
 
 
 class Template:
@@ -34,20 +34,15 @@ class Template:
             return basic_info
 
     def _convert_list_to_dict(self, source):
-        if source == None or type(source) == dict:
+        if source == None or isinstance(source,dict):
             return source
 
-        result = {}
-        for item in source:
-            id = item["id"]
-            item.pop("id")
-            result[id] = item
-        return result
+        return {item.pop("id") : item for item in source}
 
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
             dict_info = commentjson.load(json_template)
-            groups = dict_info["device"].get("groups")  # groups and parameters mey have dict type
+            groups = dict_info["device"].get("groups")  # groups and parameters may have dict type
             parameters = dict_info["device"].get("parameters")
             full_info = {
                 "title": dict_info.get("title", None),
