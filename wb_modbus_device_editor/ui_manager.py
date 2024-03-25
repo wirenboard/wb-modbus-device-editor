@@ -66,7 +66,7 @@ class UiManager:
             id="nodel_mb_port",
             title="Порт",
             dic=self.get_ports(),
-            default=0,
+            default=None,
             width=40,
             side=tkinter.LEFT,
             anchor=tkinter.SW,
@@ -333,6 +333,8 @@ class UiManager:
         if default in dic["enum"]:
             index = dic["enum"].index(default)
             combobox.current(index)
+        elif len(enums) >= 1:
+            combobox.current(0)
 
         return combobox
 
@@ -429,16 +431,19 @@ class UiManager:
         widgets = self.widgets
         values = {}
 
-        for key in widgets:
-            item = widgets[key]
+        for key, item in widgets.items():
+
             if item.type == "spinbox":
                 values.update({key: item.get()})
 
             if item.type == "combobox":
                 value = item.get()
                 dic = item.dic
-                index = dic["enum_titles"].index(value)
-                values.update({key: dic["enum"][index]})
+                try:
+                    index = dic["enum_titles"].index(value)
+                    values.update({key: dic["enum"][index]})
+                except ValueError:
+                    pass
 
         return values
 
@@ -499,9 +504,9 @@ class UiManager:
         else:
             widget.config(state="!disable")
 
-    def open_file(self):
+    def open_file(self, templates_dir):
         file_patch = filedialog.askopenfilename(
-            title="Выберите шаблон", initialdir="./templates", filetypes=[("JSON Template", "*.json")]
+            title="Выберите шаблон", initialdir=templates_dir, filetypes=[("JSON Template", "*.json")]
         )
         return file_patch
 
