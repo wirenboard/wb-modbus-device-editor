@@ -101,13 +101,13 @@ class Template:
 
 class TemplateManager:
     _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(),"templates")
-    _VERSION_FILENAME = "version"
+    _SHA_FILENAME = "sha" #commit sha
     _OWNER = "wirenboard"
     _REPO = "wb-mqtt-serial"
 
     def __init__(self, templates_dir: str = _DEFAULT_TEMPLATES_DIR) -> None:
         self._templates_dir = templates_dir
-        self._version_filepath = os.path.join(self._templates_dir, self._VERSION_FILENAME)
+        self._sha_filepath = os.path.join(self._templates_dir, self._SHA_FILENAME)
         self._templates = {}
 
     @property
@@ -125,17 +125,13 @@ class TemplateManager:
                 member.name = os.path.basename(member.name)
                 yield member
 
-    def _get_latest_master_tag(self, owner, repo):
-        url = f"https://api.github.com/repos/{owner}/{repo}/tags"
-        tags = requests.get(url, timeout=1).json()  # get 30 latest tags bu default
-        for tag in tags:
-            version = semantic_version.Version.parse(tag["name"].replace("v", ""))
-            if version[3:4] == ((),):  # master tags haven't prerelease and build parts
-                return tag["name"]
+    def _get_latest_master_sha(self, owner, repo):
+        url = f"https://api.github.com/repos/{owner}/{repo}/git/matching-refs/heads/master"
+        res = requests.get(url, timeout=1).json()
+        return res[0]["object"]["sha"]
 
-    def _download_templates(self, owner, repo, tag, templates_dir):
-        tarball_url = f"https://api.github.com/repos/{owner}/{repo}/tarball/tags/{tag}"
-        # release_info = requests.get(release_url, timeout=1).json()
+    def _download_templates(self, owner, repo, templates_dir):
+        tarball_url = f"https://api.github.com/repos/{owner}/{repo}/tarball/master"
         source_raw = requests.get(tarball_url, timeout=1, stream=True)
         source_tar = tarfile.open(fileobj=source_raw.raw, mode="r|gz")
         source_tar.extractall(
@@ -160,26 +156,25 @@ class TemplateManager:
                 continue
 
     def update_templates(self):
-        latest_tag = self._get_latest_master_tag(self._OWNER, self._REPO)
-        latest_version = latest_tag.replace("v", "")
-        current_version = None
+        latest_sha = self._get_latest_master_sha(self._OWNER, self._REPO)
+        current_sha = None
 
-        if os.path.exists(self._version_filepath):
-            with open(self._version_filepath, encoding="utf-8") as version_file:
-                current_version = version_file.readline()
+        if os.path.exists(self._sha_filepath):
+            with open(self._sha_filepath, encoding="utf-8") as sha_file:
+                current_sha = sha_file.readline()
 
         if (
             not os.path.exists(self._templates_dir)
-            or current_version is None
-            or (semantic_version.Version(latest_version) > semantic_version.Version(current_version))
+            or current_sha is None
+            or current_sha != latest_sha
         ):
-            self._download_templates(self._OWNER, self._REPO, latest_tag, self._templates_dir)
-            with open(self._version_filepath, "w", encoding="utf-8") as version_file:
-                version_file.write(latest_version)
+            self._download_templates(self._OWNER, self._REPO, self._templates_dir)
+            with open(self._sha_filepath, "w", encoding="utf-8") as sha_file:
+                sha_file.write(latest_sha)
 
             for template_name in os.listdir(self._templates_dir):
 
-                if template_name == self._VERSION_FILENAME:
+                if template_name == self._SHA_FILENAME:
                     continue
 
                 template_path = os.path.abspath(os.path.join(self._templates_dir, template_name))
