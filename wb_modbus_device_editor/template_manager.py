@@ -100,7 +100,7 @@ class Template:
 
 
 class TemplateManager:
-    _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(),"templates")
+    _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(),".wb-templates")
     _SHA_FILENAME = "sha" #commit sha
     _OWNER = "wirenboard"
     _REPO = "wb-mqtt-serial"
