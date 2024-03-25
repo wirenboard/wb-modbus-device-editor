@@ -1,4 +1,5 @@
 import os
+import pathlib
 import tarfile
 
 import commentjson
@@ -99,7 +100,7 @@ class Template:
 
 
 class TemplateManager:
-    _DEFAULT_TEMPLATES_DIR = "templates"
+    _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(),"templates")
     _VERSION_FILENAME = "version"
     _OWNER = "wirenboard"
     _REPO = "wb-mqtt-serial"
