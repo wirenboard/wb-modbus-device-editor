@@ -101,14 +101,15 @@ class Template:
 
 
 class TemplateManager:
-    _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(),".wb-templates")
-    _SHA_FILENAME = "sha" #commit sha
+    _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(), ".wb-templates")
+    _SHA_FILENAME = "sha"  # commit sha
     _OWNER = "wirenboard"
     _REPO = "wb-mqtt-serial"
 
     def __init__(self, templates_dir: str = _DEFAULT_TEMPLATES_DIR) -> None:
         self._templates_dir = templates_dir
         self._sha_filepath = os.path.join(self._templates_dir, self._SHA_FILENAME)
+        self._need_update, self._latest_sha = self._check_update_needed(self._sha_filepath, self._templates_dir)
         self._templates = {}
 
     @property
@@ -118,6 +119,20 @@ class TemplateManager:
     @property
     def templates(self) -> list:
         return self._templates
+    
+    @property
+    def update_needed(self):
+        return self._need_update
+    
+    def _check_update_needed(self, sha_filepath, templates_dir)->bool:
+        latest_sha = self._get_latest_master_sha(self._OWNER, self._REPO)
+        current_sha = None
+
+        if os.path.exists(sha_filepath):
+            with open(sha_filepath, encoding="utf-8") as sha_file:
+                current_sha = sha_file.readline()
+
+        return (not os.path.exists(templates_dir) or current_sha is None or current_sha != latest_sha), latest_sha
 
     def _get_templates_from_tar(self, tar_file: tarfile.TarFile):
         for member in tar_file:
@@ -157,21 +172,12 @@ class TemplateManager:
                 continue
 
     def update_templates(self):
-        latest_sha = self._get_latest_master_sha(self._OWNER, self._REPO)
-        current_sha = None
-
-        if os.path.exists(self._sha_filepath):
-            with open(self._sha_filepath, encoding="utf-8") as sha_file:
-                current_sha = sha_file.readline()
-
-        if (
-            not os.path.exists(self._templates_dir)
-            or current_sha is None
-            or current_sha != latest_sha
-        ):
+        if self._need_update:
             self._download_templates(self._OWNER, self._REPO, self._templates_dir)
+
+        
             with open(self._sha_filepath, "w", encoding="utf-8") as sha_file:
-                sha_file.write(latest_sha)
+                sha_file.write(self._latest_sha)
 
             for template_name in os.listdir(self._templates_dir):
 
@@ -184,7 +190,7 @@ class TemplateManager:
                     os.remove(template_path)
                     continue
 
-    def open_template(self,template_path):
+    def open_template(self, template_path):
         template = Template(template_path)
         template.update_properties()
         return template
