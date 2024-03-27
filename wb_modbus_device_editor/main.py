@@ -30,7 +30,6 @@ class App:
         self.template_manager.update_templates()
         self.ui.write_log("Обновление завершено. Настройте параметры подключения и откройте шаблон.")
 
-
     # действие при нажатии на кнопку Открыть шаблон
     def btn_open_template_click(self, event):
         templates_dir = self.template_manager.templates_dir
