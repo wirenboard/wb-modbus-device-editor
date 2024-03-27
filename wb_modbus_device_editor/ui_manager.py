@@ -210,6 +210,7 @@ class UiManager:
         widget.pack(widget_opts)
         widget.pack_info = self.get_pack_info(widget)
         widget.type = widget_type
+        widget.visible = True
         self.widgets[widget_id] = widget
 
     def write_log(self, text):
@@ -432,6 +433,8 @@ class UiManager:
         values = {}
 
         for key, item in widgets.items():
+            if item.type in ["spinbox", "combobox"] and not item.visible:
+                continue
 
             if item.type == "spinbox":
                 values.update({key: item.get()})
@@ -467,6 +470,7 @@ class UiManager:
         widget = self.widgets.get(widget_id)
         # if widget.type != "group":
         if widget != None:
+            widget.visible = False
             widget.pack_forget()
 
             widget = self.widgets.get(widget_id + "_title")
@@ -480,6 +484,7 @@ class UiManager:
     def widget_show(self, widget_id):
         widget = self.widgets[widget_id]
         widget.pack(widget.pack_info)
+        widget.visible = True
 
         widget = self.widgets.get(widget_id + "_title")
         if widget != None:
