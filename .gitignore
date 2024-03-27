@@ -8,3 +8,7 @@ dist
 build
 __pycache__/
 .vscode
+
+### direnv ###
+.direnv
+.envrc

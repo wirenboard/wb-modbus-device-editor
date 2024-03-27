@@ -1,3 +1,9 @@
+wb-modbus-device-editor (1.1.2) stable; urgency=medium
+
+  * Follow the XDG spec
+
+ -- Nikolay Korotkiy <nikolay.korotkiy@wirenboard.com>  Wed, 27 Mar 2024 20:50:00 +0400
+
 wb-modbus-device-editor (1.1.1) stable; urgency=medium
 
   * More verbose templates update
