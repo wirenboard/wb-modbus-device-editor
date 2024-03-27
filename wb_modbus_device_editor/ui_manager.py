@@ -22,7 +22,7 @@ class UiManager:
     def __init__(self):
         self.win = tkinter.Tk()
         self.win.title("Python Modbus Device Editor")
-        self.win.geometry("1366x750")
+        self.win.geometry("1400x750")
 
         style = ttk.Style(self.win)
         style.theme_use("clam")

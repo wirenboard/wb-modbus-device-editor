@@ -1,3 +1,9 @@
+wb-modbus-device-editor (1.1.1) stable; urgency=medium
+
+  * More verbose templates update
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.com>  Wed, 27 Mar 2024 12:11:24 +0300
+
 wb-modbus-device-editor (1.1.0) stable; urgency=medium
 
   * Add templates downloading from github
