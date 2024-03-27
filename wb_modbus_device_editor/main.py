@@ -16,11 +16,20 @@ class App:
         self.ui.btn_write_params.bind("<ButtonPress-1>", self.btn_write_params_click)
 
         self.template_manager = template_manager.TemplateManager()
-        self.template_manager.update_templates()
         self._template = None
 
-        self.ui.write_log("Настройте параметры подключения и откройте шаблон.")
+        if self.template_manager.update_needed:
+            self.ui.write_log("Обновление шаблонов, пожалуйста подождите. Это может занять около минуты.")
+            self.ui.win.after(100, self.btn_update_template_click)
+        else:
+            self.ui.write_log("Настройте параметры подключения и откройте шаблон.")
+
         self.ui.win.mainloop()
+
+    def btn_update_template_click(self):
+        self.template_manager.update_templates()
+        self.ui.write_log("Обновление завершено. Настройте параметры подключения и откройте шаблон.")
+
 
     # действие при нажатии на кнопку Открыть шаблон
     def btn_open_template_click(self, event):
