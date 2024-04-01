@@ -41,12 +41,12 @@ class App:
             if self.io_running:
                 self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
                 return
-    
+
         templates_dir = self.template_manager.templates_dir
         file_path = self.ui.open_file(templates_dir)
         if not file_path:
             return
-        
+
         # удаляем виджеты от предыдущего шаблона
         self.ui.delete_widgets()
 
@@ -60,15 +60,15 @@ class App:
         )
 
         with self.io_lock:
-            self.io_running=True
+            self.io_running = True
 
     def load_template(self, file_path):
         return self.template_manager.open_template(file_path)
-    
+
     def open_template_errback(self, error):
         self.ui.write_log(f"Ошибка при открытии шаблона: {error}")
         with self.io_lock:
-            self.io_running=False
+            self.io_running = False
 
     def open_template_callback(self, result):
         self._template = result
@@ -78,7 +78,7 @@ class App:
         self.ui.write_log(f"Чтение шаблона завершено.")
 
         with self.io_lock:
-            self.io_running=False
+            self.io_running = False
 
     def create_interface(self):
         # если у нас есть параметры без групп, например, режимы — создаём для них отдельную вкладку
@@ -266,8 +266,6 @@ class App:
             values = self.ui.get_values()
             iterations += 1
 
-            
-
     def btn_read_params_click(self, event):
         if self._template is None:
             self.ui.write_log("Откройте шаблон")
@@ -298,18 +296,22 @@ class App:
         with self.io_lock:
             self.io_running = True
 
-    def read_params_from_modbus_callback(self,result):
+    def read_params_from_modbus_callback(self, result):
         failed = False
         for id, param, value in result:
             if value is None:
-                self.ui.write_log(f"Не удалось прочитать параметр {self._template.translate(param['title'])} {param['address']}")
+                self.ui.write_log(
+                    f"Не удалось прочитать параметр {self._template.translate(param['title'])} {param['address']}"
+                )
                 self.ui.widget_disable(id)
                 failed = True
             else:
                 self.ui.set_value(id, value, scale=param.get("scale"))
                 self.ui.widget_enable(id)
         if failed:
-            self.ui.write_log("Не удалось прочитать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования.")
+            self.ui.write_log(
+                "Не удалось прочитать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
+            )
         else:
             self.widgets_hide_by_condition()
             self.ui.write_log("Чтение параметров завершено")
@@ -318,7 +320,7 @@ class App:
         with self.io_lock:
             self.io_running = False
 
-    def read_params_from_modbus_errback(self,error):
+    def read_params_from_modbus_errback(self, error):
         self.ui.write_log(f"Ошибка во время чтения параметов: {error}")
         self.client.disconnect()
 
@@ -328,9 +330,11 @@ class App:
     def read_params_from_modbus(self, client, slave_id, params):
         result = []
 
-        for id,param in params.items():
+        for id, param in params.items():
             # адреса пишут то в HEX то в DEC, надо определять и преобразовывать в DEC
-            address = int(param["address"], 16)  if isinstance(param["address"], str) else int(param["address"])
+            address = (
+                int(param["address"], 16) if isinstance(param["address"], str) else int(param["address"])
+            )
 
             # бывает, что тип регистра не пишет, надо присвоить значение по умолчанию
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
@@ -338,7 +342,7 @@ class App:
             if reg_type == "holding":
                 try:
                     value = client.read_holding(slave_id=slave_id, reg_address=address)
-                    result.append((id,param,value))
+                    result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
                     raise RuntimeError("Нет связи с устройством. Проверье, верно ли указан адрес.") from e
 
@@ -374,13 +378,14 @@ class App:
         with self.io_lock:
             self.io_running = True
 
-
-    def write_params_to_modbus(self, client, slave_id, params):        
+    def write_params_to_modbus(self, client, slave_id, params):
         result = []
 
         for id, param in params.items():
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
-            address = int(param["address"], 16)  if isinstance(param["address"], str) else int(param["address"])
+            address = (
+                int(param["address"], 16) if isinstance(param["address"], str) else int(param["address"])
+            )
 
             if reg_type == "holding":
                 value = self.ui.get_value(id)
@@ -392,20 +397,24 @@ class App:
 
                 try:
                     value = client.write_holding(slave_id, address, value)
-                    result.append((id,param,value))
+                    result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
                     raise RuntimeError("Нет связи с устройством. Проверье, верно ли указан адрес.") from e
 
         return result
-    
-    def write_params_from_modbus_callback(self,result):
+
+    def write_params_from_modbus_callback(self, result):
         failed = False
         for id, param, value in result:
             if value is None:
-                self.ui.write_log(f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}")
+                self.ui.write_log(
+                    f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}"
+                )
                 failed = True
         if failed:
-            self.ui.write_log("Не удалось записать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования.")
+            self.ui.write_log(
+                "Не удалось записать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
+            )
         else:
             self.ui.write_log("Запись параметров завершена.")
         self.client.disconnect()
@@ -413,13 +422,12 @@ class App:
         with self.io_lock:
             self.io_running = False
 
-    def write_params_from_modbus_errback(self,error):
+    def write_params_from_modbus_errback(self, error):
         self.ui.write_log(f"Ошибка во время записи параметов: {error}")
         self.client.disconnect()
 
         with self.io_lock:
             self.io_running = False
-
 
     # взято из интернета: https://ru.stackoverflow.com/a/1413836
     def numeral_noun_declension(self, number, nominative_singular, genetive_singular, nominative_plural):

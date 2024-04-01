@@ -17,7 +17,7 @@ def run_in_thread(window, computation, args=(), kwargs={}, callback=None, errbac
 def _compute_result(computation, args, kwargs, future_result):
     try:
         _result = computation(*args, **kwargs)
-    except BaseException as e: #disable=broad-except
+    except BaseException as e:  # disable=broad-except
         _result = e
 
     future_result.put(_result)
@@ -27,7 +27,7 @@ def _after_completion(window, future_result, callback, errback, polling):
     def check():
         try:
             result = future_result.get(block=False)
-        except Exception: #disable=broad-except
+        except Exception:  # disable=broad-except
             window.after(polling, check)
         else:
             if isinstance(result, Exception):

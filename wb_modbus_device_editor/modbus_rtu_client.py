@@ -33,11 +33,10 @@ class ModbusRTUClient:
             return None
         return data.registers[0]
 
-    def write_holding(self, slave_id, reg_address, value):   
+    def write_holding(self, slave_id, reg_address, value):
         data = self.client.write_register(address=reg_address, slave=slave_id, value=int(value))
         if isinstance(data, Exception):  # in case pymodbus experiences an internal error (wrong slave id)
             raise data
         if data.isError():  # in case device reports a problem (wrong reg addr)
             return None
         return data.value
-
