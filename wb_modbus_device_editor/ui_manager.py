@@ -401,7 +401,6 @@ class UiManager:
 
     def set_value(self, widget_id, value, scale=None):
         widget = self.widgets.get(widget_id)
-        value = value[0]
         if widget.type == "spinbox":
             if scale != None:
                 value = value * scale

@@ -3,6 +3,7 @@ import pathlib
 import re
 import tarfile
 
+import appdirs
 import commentjson
 import jinja2
 import requests
@@ -35,15 +36,15 @@ class Template:
             return basic_info
 
     def _convert_list_to_dict(self, source):
-        if source == None or isinstance(source,dict):
+        if source == None or isinstance(source, dict):
             return source
 
-        return {item.pop("id") : item for item in source}
+        return {item.pop("id"): item for item in source}
 
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
             dict_info = commentjson.load(json_template)
-            groups = dict_info["device"].get("groups")  # groups and parameters may have dict type
+            groups = dict_info["device"].get("groups",{})  # groups and parameters may have dict type
             parameters = dict_info["device"].get("parameters")
             full_info = {
                 "title": dict_info.get("title", None),
@@ -76,8 +77,8 @@ class Template:
         parameter = self._properties["device"]["parameters"][parameter_id]
         enum = parameter["enum"]
         enum_titles = parameter["enum_titles"]
-        for enum_title in enum_titles:
-            enum_title = self.translate(enum_title)
+        for i,title in enumerate(enum_titles):
+            enum_titles[i] = self.translate(title)
 
         return {"enum": enum, "enum_titles": enum_titles}
 
@@ -85,8 +86,8 @@ class Template:
     def calc_parameter_condition(self, condition, values):
         try:
             condition = condition.replace("||", " or ").replace("&&", " and ")
-            condition = re.sub(r"isDefined\(([A-Za-z1-9_]+)\)",r"('\g<1>' in locals())", condition)
-            return eval(condition, {"__builtins__": None, "locals":locals}, values)
+            condition = re.sub(r"isDefined\(([A-Za-z1-9_]+)\)", r"('\g<1>' in locals())", condition)
+            return eval(condition, {"__builtins__": None, "locals": locals}, values)
         except Exception as error:
             raise RuntimeError(f"Ошибка в выражении: {condition}\n") from error
 
@@ -101,7 +102,7 @@ class Template:
 
 
 class TemplateManager:
-    _DEFAULT_TEMPLATES_DIR = os.path.join(pathlib.Path.home(), ".wb-templates")
+    _DEFAULT_TEMPLATES_DIR = appdirs.user_data_dir(appname="wb-modbus-device-editor", appauthor="WirenBoard")
     _SHA_FILENAME = "sha"  # commit sha
     _OWNER = "wirenboard"
     _REPO = "wb-mqtt-serial"
@@ -109,7 +110,9 @@ class TemplateManager:
     def __init__(self, templates_dir: str = _DEFAULT_TEMPLATES_DIR) -> None:
         self._templates_dir = templates_dir
         self._sha_filepath = os.path.join(self._templates_dir, self._SHA_FILENAME)
-        self._need_update, self._latest_sha = self._check_update_needed(self._sha_filepath, self._templates_dir)
+        self._need_update, self._latest_sha = self._check_update_needed(
+            self._sha_filepath, self._templates_dir
+        )
         self._templates = {}
 
     @property
@@ -119,12 +122,12 @@ class TemplateManager:
     @property
     def templates(self) -> list:
         return self._templates
-    
+
     @property
     def update_needed(self):
         return self._need_update
-    
-    def _check_update_needed(self, sha_filepath, templates_dir)->bool:
+
+    def _check_update_needed(self, sha_filepath, templates_dir) -> bool:
         latest_sha = self._get_latest_master_sha(self._OWNER, self._REPO)
         current_sha = None
 
@@ -132,7 +135,9 @@ class TemplateManager:
             with open(sha_filepath, encoding="utf-8") as sha_file:
                 current_sha = sha_file.readline()
 
-        return (not os.path.exists(templates_dir) or current_sha is None or current_sha != latest_sha), latest_sha
+        return (
+            not os.path.exists(templates_dir) or current_sha is None or current_sha != latest_sha
+        ), latest_sha
 
     def _get_templates_from_tar(self, tar_file: tarfile.TarFile):
         for member in tar_file:
@@ -175,7 +180,6 @@ class TemplateManager:
         if self._need_update:
             self._download_templates(self._OWNER, self._REPO, self._templates_dir)
 
-        
             with open(self._sha_filepath, "w", encoding="utf-8") as sha_file:
                 sha_file.write(self._latest_sha)
 

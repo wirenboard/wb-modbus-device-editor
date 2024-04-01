@@ -26,27 +26,18 @@ class ModbusRTUClient:
         self.client.close()
 
     def read_holding(self, slave_id, reg_address):
-        try:
-            data = self.client.read_holding_registers(address=reg_address, slave=slave_id)
-            value = data.registers
-        except Exception as e:
-            msg = "%s" % e.args
-            if "ModbusIOException" in msg:
-                raise Exception("ModbusIOException")
-            if "ExceptionResponse" in msg:
-                raise Exception("ExceptionResponse")
+        data = self.client.read_holding_registers(address=reg_address, slave=slave_id)
+        if isinstance(data, Exception):  # in case pymodbus experiences an internal error (wrong slave id)
+            raise data
+        if data.isError():  # in case device reports a problem (wrong reg addr)
+            return None
+        return data.registers[0]
 
-        return value
+    def write_holding(self, slave_id, reg_address, value):   
+        data = self.client.write_register(address=reg_address, slave=slave_id, value=int(value))
+        if isinstance(data, Exception):  # in case pymodbus experiences an internal error (wrong slave id)
+            raise data
+        if data.isError():  # in case device reports a problem (wrong reg addr)
+            return None
+        return data.value
 
-    def write_holding(self, slave_id, reg_address, value):
-        try:
-            res = self.client.write_register(address=reg_address, slave=slave_id, value=int(value))
-
-            if "IllegalValue" in "%s" % res:
-                raise Exception("IllegalValue")
-            if "Invalid Message" in "%s" % res:
-                raise Exception("Invalid Message")
-        except Exception as e:
-            raise Exception(e)
-
-        return "WriteRegisterResponse" in "%s" % res

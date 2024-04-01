@@ -18,6 +18,13 @@ setup(
     description="Wiren Board modbus device editor",
     url="https://github.com/wirenboard/py-modbus-device-editor",
     packages=["wb_modbus_device_editor"],
-    install_requires=["pymodbus", "pyserial","jinja2","commentjson","requests"],
+    install_requires=[
+        "appdirs",
+        "pymodbus",
+        "pyserial",
+        "jinja2",
+        "commentjson",
+        "requests",
+    ],
     license="MIT",
 )

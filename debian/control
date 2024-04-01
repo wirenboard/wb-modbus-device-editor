@@ -2,11 +2,11 @@ Source: wb-modbus-device-editor
 Maintainer: Wiren Board Team <info@wirenboard.com>
 Section: misc
 Priority: optional
-Build-Depends: debhelper-compat (= 13), dh-python, python3, python3-tk
+Build-Depends: debhelper-compat (= 13), dh-python, python3, python3-tk, python3-appdirs
 Standards-Version: 4.5.1
 Homepage: https://github.com/wirenboard/wb-modbus-device-editor
 
 Package: wb-modbus-device-editor
 Architecture: all
-Depends: ${misc:Depends}, python3:any (>= 3.10.0), python3-tk, ${python3:Depends}
+Depends: ${misc:Depends}, python3:any (>= 3.10.0), python3-tk, python3-appdirs, ${python3:Depends}
 Description: Wiren Board modbus device editor
