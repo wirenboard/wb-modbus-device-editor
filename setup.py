@@ -22,11 +22,9 @@ setup(
         "appdirs",
         "pymodbus",
         "pyserial",
-        "tarfile",
         "jinja2",
         "commentjson",
         "requests",
-        "semantic_version",
     ],
     license="MIT",
 )

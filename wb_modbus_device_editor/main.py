@@ -228,22 +228,29 @@ class App:
 
     def widgets_hide_by_condition(self):
         values = self.ui.get_values()
+        old_values = {}
+        iterations = 0
         widgets = self.ui.get_widgets()
 
-        for key, item in widgets.items():
+        while old_values != values and iterations < 10:
+            for key, item in widgets.items():
 
-            if item.type in ["group", "spinbox", "combobox"]:
-                if hasattr(item, "condition"):
-                    condition = item.condition
-                    if condition != None:
-                        visible = self._template.calc_parameter_condition(condition, values)
-                    else:
-                        visible = True
+                if item.type in ["group", "spinbox", "combobox"]:
 
-                    if visible:
-                        self.ui.widget_show(key)
-                    else:
-                        self.ui.widget_hide(key)
+                    if hasattr(item, "condition"):
+                        condition = item.condition
+                        if condition != None:
+                            visible = self._template.calc_parameter_condition(condition, values)
+                        else:
+                            visible = True
+
+                        if visible:
+                            self.ui.widget_show(key)
+                        else:
+                            self.ui.widget_hide(key)
+            old_values = values.copy()
+            values = self.ui.get_values()
+            iterations += 1
 
     def btn_read_params_click(self, event):
         mb_params = self.ui.get_modbus_params()

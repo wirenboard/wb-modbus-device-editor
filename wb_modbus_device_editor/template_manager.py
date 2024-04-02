@@ -1,12 +1,12 @@
 import os
 import pathlib
+import re
 import tarfile
 
 import appdirs
 import commentjson
 import jinja2
 import requests
-import semantic_version
 
 
 class Template:
@@ -83,10 +83,10 @@ class Template:
         return {"enum": enum, "enum_titles": enum_titles}
 
     def calc_parameter_condition(self, condition, values):
-
         try:
             condition = condition.replace("||", " or ").replace("&&", " and ")
-            return eval(condition, {"__builtins__": None}, values)
+            condition = re.sub(r"isDefined\(([A-Za-z1-9_]+)\)", r"('\g<1>' in locals())", condition)
+            return eval(condition, {"__builtins__": None, "locals": locals}, values)
         except Exception as error:
             raise RuntimeError(f"Ошибка в выражении: {condition}\n") from error
 
