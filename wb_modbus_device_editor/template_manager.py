@@ -82,12 +82,11 @@ class Template:
 
         return {"enum": enum, "enum_titles": enum_titles}
 
-
     def calc_parameter_condition(self, condition, values):
         try:
             condition = condition.replace("||", " or ").replace("&&", " and ")
-            condition = re.sub(r"isDefined\(([A-Za-z1-9_]+)\)",r"('\g<1>' in locals())", condition)
-            return eval(condition, {"__builtins__": None, "locals":locals}, values)
+            condition = re.sub(r"isDefined\(([A-Za-z1-9_]+)\)", r"('\g<1>' in locals())", condition)
+            return eval(condition, {"__builtins__": None, "locals": locals}, values)
         except Exception as error:
             raise RuntimeError(f"Ошибка в выражении: {condition}\n") from error
 

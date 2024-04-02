@@ -252,8 +252,6 @@ class App:
             values = self.ui.get_values()
             iterations += 1
 
-            
-
     def btn_read_params_click(self, event):
         mb_params = self.ui.get_modbus_params()
 
