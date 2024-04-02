@@ -1,3 +1,9 @@
+wb-modbus-device-editor (1.1.5) stable; urgency=medium
+
+  * Fix interface freeze
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.com>  Tue, 02 Apr 2024 12:02:36 +0300
+
 wb-modbus-device-editor (1.1.4) stable; urgency=medium
 
   * Fix isDefined function evaluation
