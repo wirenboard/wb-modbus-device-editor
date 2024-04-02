@@ -1,6 +1,6 @@
-@Library('wbci@feature/release-any-file')
+@Library('wbci@feature/release-any-file') _
 buildDebSbuild(
-    // customReleaseBranchPattern: '^tmp/test-gh-release$',
+    customReleaseBranchPattern: '^tmp/test-gh-release$',
     defaultTargets: 'bullseye-host',
     repos: ['devTools'],
     defaultRunLintian: true,
