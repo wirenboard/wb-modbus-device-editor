@@ -332,9 +332,7 @@ class App:
 
         for id, param in params.items():
             # адреса пишут то в HEX то в DEC, надо определять и преобразовывать в DEC
-            address = (
-                int(param["address"], 16) if isinstance(param["address"], str) else int(param["address"])
-            )
+            address = int(param["address"], 0) if isinstance(param["address"], str) else int(param["address"])
 
             # бывает, что тип регистра не пишет, надо присвоить значение по умолчанию
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
@@ -383,9 +381,7 @@ class App:
 
         for id, param in params.items():
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
-            address = (
-                int(param["address"], 16) if isinstance(param["address"], str) else int(param["address"])
-            )
+            address = int(param["address"], 0) if isinstance(param["address"], str) else int(param["address"])
 
             if reg_type == "holding":
                 value = self.ui.get_value(id)
