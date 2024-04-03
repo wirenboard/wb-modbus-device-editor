@@ -1,3 +1,9 @@
+wb-modbus-device-editor (1.1.2-test) stable; urgency=medium
+
+  * Test release
+
+ -- Nikita Chernykh <nikita.chernykh@wirenboard.com>  Wed, 3 Apr 2024 20:32:00 +0300
+
 wb-modbus-device-editor (1.1.2) stable; urgency=medium
 
   * Follow the XDG spec
