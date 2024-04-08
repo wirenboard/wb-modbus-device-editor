@@ -44,7 +44,7 @@ class Template:
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
             dict_info = commentjson.load(json_template)
-            groups = dict_info["device"].get("groups")  # groups and parameters may have dict type
+            groups = dict_info["device"].get("groups", {})  # groups and parameters may have dict type
             parameters = dict_info["device"].get("parameters")
             full_info = {
                 "title": dict_info.get("title", None),
@@ -77,8 +77,8 @@ class Template:
         parameter = self._properties["device"]["parameters"][parameter_id]
         enum = parameter["enum"]
         enum_titles = parameter["enum_titles"]
-        for enum_title in enum_titles:
-            enum_title = self.translate(enum_title)
+        for i, title in enumerate(enum_titles):
+            enum_titles[i] = self.translate(title)
 
         return {"enum": enum, "enum_titles": enum_titles}
 
