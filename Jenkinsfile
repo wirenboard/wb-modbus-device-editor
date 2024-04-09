@@ -1,6 +1,6 @@
-@Library('wbci@feature/release-any-file') _
+@Library('wbci@tmp/webconn/copyartifacts') _
 buildDebSbuild(
-    customReleaseBranchPattern: '^tmp/test-gh-release$',
+    customReleaseBranchPattern: '^tmp/webconn/test-gh-release$',
     defaultTargets: 'bullseye-host',
     repos: ['devTools'],
     defaultRunLintian: true,
