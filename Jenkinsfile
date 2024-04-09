@@ -5,6 +5,7 @@ buildDebSbuild(
     repos: ['devTools'],
     defaultRunLintian: true,
     defaultRunPythonChecks: true,
+    releaseFilesFilter: '**/*.deb, **/*.exe',
     customBuildSteps: {
         stage("Build exe") {
             sh 'docker run -t -v $DEV_VOLUME -w $PWD/$PROJECT_SUBDIR tobix/pywine bash -c "./Build.sh clean &&  ./Build.sh windows"'
