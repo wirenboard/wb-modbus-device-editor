@@ -3,29 +3,12 @@
 
 ![Screenshot](images/main_window.png)
 
-## Linux
-Проверено в Python 3.10.9 под Linux.
+Артефакты, доступные для установки, вы можете взять в списке релизов.
 
-Установите pymodbus:
-```
- pip3 install pymodbus
-```
-Запустите утилиту:
-```
-python main.py
-```
+# Linux
 
-## MacOS
+Установите пакет, используя пакетный менеджер.
 
-Проверено в macOS (Ventura 13.4.1 (22F82), Apple M1 Max).
+ # Windows
 
-Установите python-tk, pyserial, pymodbus:
-```
-pip3 install python-tk
-python3 -m pip install pyserial
-python3 -m pip install pymodbus
-```
-Запустите утилиту:
-```
-python main.py
-```
+Распакуйте архив в удобное вам расположение, распакованные файлы должны находиться в одной директории. Для удобства использования вы можете сделать ярлык запускаемого exe-файла и поместить его на ваш рабочий стол.
