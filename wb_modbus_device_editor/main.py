@@ -347,7 +347,7 @@ class App:
             self.io_running = False
 
     def read_params_from_modbus_errback(self, error: Exception):
-        str_error = ''.join(traceback.format_exception(None, error, error.__traceback__,chain=False))
+        str_error = "".join(traceback.format_exception(None, error, error.__traceback__, chain=False))
         self.ui.write_log(f"Ошибка во время чтения параметов: {str_error}")
         self.client.disconnect()
 
