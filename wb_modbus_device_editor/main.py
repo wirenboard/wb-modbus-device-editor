@@ -346,8 +346,9 @@ class App:
         with self.io_lock:
             self.io_running = False
 
-    def read_params_from_modbus_errback(self, error):
-        self.ui.write_log(f"Ошибка во время чтения параметов: {error}")
+    def read_params_from_modbus_errback(self, error: Exception):
+        str_error = ''.join(traceback.format_exception(None, error, error.__traceback__,chain=False))
+        self.ui.write_log(f"Ошибка во время чтения параметов: {str_error}")
         self.client.disconnect()
 
         with self.io_lock:
@@ -368,7 +369,7 @@ class App:
                     value = client.read_holding(slave_id=slave_id, reg_address=address)
                     result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
-                    raise RuntimeError("Нет связи с устройством. Проверье, верно ли указан адрес.") from e
+                    raise e
 
         return result
 
@@ -421,7 +422,7 @@ class App:
                     value = client.write_holding(slave_id, address, value)
                     result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
-                    raise RuntimeError("Нет связи с устройством. Проверье, верно ли указан адрес.") from e
+                    raise e
 
         return result
 
