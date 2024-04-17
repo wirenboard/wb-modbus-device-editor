@@ -20,6 +20,7 @@ a = Analysis(
         "commentjson",
         "requests",
         "pymodbus",
+        "semantic_version"
     ],
     hookspath=[],
     runtime_hooks=[],

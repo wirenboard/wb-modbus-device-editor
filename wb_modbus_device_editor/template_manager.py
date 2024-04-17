@@ -1,5 +1,6 @@
 import os
 import pathlib
+import platform
 import re
 import tarfile
 
@@ -7,17 +8,16 @@ import appdirs
 import commentjson
 import jinja2
 import requests
+import semantic_version
 
 
 class Template:
-    def __init__(self, template_path):
+    def __init__(self, template_path, full_read: bool):
         self._template_path = template_path
-        self._basic_properties = self._get_template_basic_info(self._template_path)
-        self._properties = None
-
-    @property
-    def basic_properties(self) -> dict:
-        return self._basic_properties
+        if full_read:
+            self._properties = self._get_template_full_info(self._template_path)
+        else:
+            self._properties = self._get_template_basic_info(self._template_path)
 
     @property
     def properties(self) -> dict:
@@ -57,9 +57,6 @@ class Template:
                 },
             }
             return full_info
-
-    def update_properties(self):
-        self._properties = self._get_template_full_info(self._template_path)
 
     def get_parameters_by_group_id(self, group_id) -> list:
         if self._properties is None:
@@ -154,11 +151,16 @@ class TemplateManager:
         tarball_url = f"https://api.github.com/repos/{owner}/{repo}/tarball/master"
         source_raw = requests.get(tarball_url, timeout=1, stream=True)
         source_tar = tarfile.open(fileobj=source_raw.raw, mode="r|gz")
-        source_tar.extractall(
-            path=templates_dir,
-            members=self._get_templates_from_tar(source_tar),
-            filter="data",
-        )
+
+        # https://docs.python.org/3.9/library/tarfile.html#tarfile.TarFile.extractall
+        if semantic_version.Version(platform.python_version()) < semantic_version.Version("3.9.17"):
+            source_tar.extractall(path=templates_dir, members=self._get_templates_from_tar(source_tar))
+        else:
+            source_tar.extractall(
+                path=templates_dir,
+                members=self._get_templates_from_tar(source_tar),
+                filter="data",
+            )
 
         template_loader = jinja2.FileSystemLoader(searchpath=templates_dir)
         template_env = jinja2.Environment(loader=template_loader)
@@ -188,12 +190,11 @@ class TemplateManager:
                     continue
 
                 template_path = os.path.abspath(os.path.join(self._templates_dir, template_name))
-                template = Template(template_path)
-                if template.basic_properties.get("deprecated", None):
+                template = Template(template_path, full_read=False)
+                if template.properties.get("deprecated", None):
                     os.remove(template_path)
                     continue
 
     def open_template(self, template_path):
-        template = Template(template_path)
-        template.update_properties()
+        template = Template(template_path, full_read=True)
         return template

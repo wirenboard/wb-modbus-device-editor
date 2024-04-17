@@ -4,7 +4,9 @@ import threading
 import tkinter
 import traceback
 
-from . import modbus_rtu_client, template_manager, ui_manager
+import pymodbus
+
+from . import modbus_rtu_client, template_manager, tk_threading, ui_manager
 
 
 class App:
@@ -51,7 +53,7 @@ class App:
         self.ui.delete_widgets()
 
         self.ui.write_log("Чтение файла {}".format(file_path))
-        tk_threading.run_in_thread(
+        tk_threading.TaskInThread(
             self.ui.win,
             self.load_template,
             kwargs={"file_path": file_path},
@@ -267,14 +269,15 @@ class App:
             iterations += 1
 
     def btn_read_params_click(self, event):
-        if self._template is None:
-            self.ui.write_log("Откройте шаблон")
-            return
 
         with self.io_lock:
             if self.io_running:
                 self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
                 return
+
+        if self._template is None:
+            self.ui.write_log("Сначала откройте шаблон")
+            return
 
         mb_params = self.ui.get_modbus_params()
         self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
@@ -285,7 +288,7 @@ class App:
 
         self.ui.write_log(f"Выполняется чтение параметров")
         parameters = self._template.properties["device"]["parameters"]
-        tk_threading.run_in_thread(
+        tk_threading.TaskInThread(
             self.ui.win,
             self.read_params_from_modbus,
             kwargs={"client": self.client, "slave_id": int(mb_params["slave_id"]), "params": parameters},
@@ -347,14 +350,14 @@ class App:
         return result
 
     def btn_write_params_click(self, event):
-        if self._template is None:
-            self.ui.write_log("Откройте шаблон")
-            return
-
         with self.io_lock:
             if self.io_running:
                 self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
                 return
+
+        if self._template is None:
+            self.ui.write_log("Сначала откройте шаблон")
+            return
 
         mb_params = self.ui.get_modbus_params()
         self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
@@ -365,7 +368,7 @@ class App:
 
         self.ui.write_log(f"Выполняется запись параметров")
         parameters = self._template.properties["device"]["parameters"]
-        tk_threading.run_in_thread(
+        tk_threading.TaskInThread(
             self.ui.win,
             self.write_params_to_modbus,
             kwargs={"client": self.client, "slave_id": int(mb_params["slave_id"]), "params": parameters},
