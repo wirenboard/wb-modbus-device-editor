@@ -3,7 +3,6 @@ import sys
 import threading
 import tkinter
 import traceback
-
 import pymodbus
 
 from . import modbus_rtu_client, template_manager, tk_threading, ui_manager
@@ -25,7 +24,6 @@ class App:
         self.io_lock = threading.Lock()
 
         if self.template_manager.update_needed:
-            self.ui.write_log("Обновление шаблонов, пожалуйста подождите. Это может занять около минуты.")
             self.ui.win.after(100, self.btn_update_template_click)
         else:
             self.ui.write_log("Настройте параметры подключения и откройте шаблон.")
@@ -33,8 +31,33 @@ class App:
         self.ui.win.mainloop()
 
     def btn_update_template_click(self):
-        self.template_manager.update_templates()
+
+        with self.io_lock:
+            if self.io_running:
+                self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
+                return
+
+        self.ui.write_log("Обновление шаблонов, пожалуйста подождите. Это может занять около минуты.")
+
+        tk_threading.TaskInThread(
+            self.ui.win,
+            self.template_manager.update_templates,
+            callback=self.btn_update_templates_callback,
+            errback=self.btn_update_templates_errback,
+        )
+
+        with self.io_lock:
+            self.io_running = True
+
+    def btn_update_templates_callback(self, result):
         self.ui.write_log("Обновление завершено. Настройте параметры подключения и откройте шаблон.")
+        with self.io_lock:
+            self.io_running = False
+
+    def btn_update_templates_errback(self, error):
+        self.ui.write_log(f"Ошибка при обновлении шаблонов: {error}")
+        with self.io_lock:
+            self.io_running = False
 
     # действие при нажатии на кнопку Открыть шаблон
     def btn_open_template_click(self, event):
