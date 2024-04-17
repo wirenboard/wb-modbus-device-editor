@@ -3,6 +3,7 @@ import sys
 import threading
 import tkinter
 import traceback
+
 import pymodbus
 
 from . import modbus_rtu_client, template_manager, tk_threading, ui_manager
