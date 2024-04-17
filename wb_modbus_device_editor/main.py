@@ -310,7 +310,7 @@ class App:
             self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
             return
 
-        self.ui.write_log(f"Выполняется чтение параметров")
+        self.ui.write_log(f"Выполняется чтение параметров устройства: {mb_params}")
         parameters = self._template.properties["device"]["parameters"]
         tk_threading.TaskInThread(
             self.ui.win,
