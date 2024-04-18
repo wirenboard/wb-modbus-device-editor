@@ -75,7 +75,7 @@ class UiManager:
         mb_baudrate = self.create_combobox(
             parent=mb_settings,
             id="nodel_mb_baudrate",
-            title="Порт",
+            title="Скорость обмена",
             dic=self.gen_baudrate_dic(),
             default=9600,
             width=8,
