@@ -45,7 +45,7 @@ class Template:
         with open(template_path, encoding="utf-8") as json_template:
             dict_info = commentjson.load(json_template)
             groups = dict_info["device"].get("groups", {})  # groups and parameters may have dict type
-            parameters = dict_info["device"].get("parameters")
+            parameters = dict_info["device"].get("parameters", {})
             full_info = {
                 "title": dict_info.get("title", None),
                 "device": {

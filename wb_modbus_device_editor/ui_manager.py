@@ -535,8 +535,8 @@ class UiManager:
         return {"enum": enum, "enum_titles": enum_titles}
 
     def gen_baudrate_dic(self):
-        enum = [4800, 9600, 19200, 38400, 57600, 115200]
-        enum_titles = ["4800", "9600", "19200", "38400", "57600", "115200"]
+        enum = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
+        enum_titles = ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
         return {"enum": enum, "enum_titles": enum_titles}
 
     def gen_bytesize_dic(self):

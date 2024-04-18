@@ -303,6 +303,11 @@ class App:
             self.ui.write_log("Сначала откройте шаблон")
             return
 
+        parameters = self._template.properties["device"]["parameters"]
+        if not parameters:
+            self.ui.write_log(f"Нет доступных для ректирования параметров")
+            return
+
         mb_params = self.ui.get_modbus_params()
         self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
 
@@ -311,7 +316,6 @@ class App:
             return
 
         self.ui.write_log(f"Выполняется чтение параметров устройства")
-        parameters = self._template.properties["device"]["parameters"]
         tk_threading.TaskInThread(
             self.ui.win,
             self.read_params_from_modbus,
@@ -385,6 +389,11 @@ class App:
             self.ui.write_log("Сначала откройте шаблон")
             return
 
+        parameters = self._template.properties["device"]["parameters"]
+        if not parameters:
+            self.ui.write_log(f"Нет доступных для ректирования параметров")
+            return
+
         mb_params = self.ui.get_modbus_params()
         self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
 
@@ -393,7 +402,6 @@ class App:
             return
 
         self.ui.write_log(f"Выполняется запись параметров")
-        parameters = self._template.properties["device"]["parameters"]
         tk_threading.TaskInThread(
             self.ui.win,
             self.write_params_to_modbus,
