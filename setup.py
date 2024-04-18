@@ -25,6 +25,7 @@ setup(
         "jinja2",
         "commentjson",
         "requests",
+        "semantic_version",
     ],
     license="MIT",
 )
