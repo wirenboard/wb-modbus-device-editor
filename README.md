@@ -11,7 +11,7 @@
 Для запуска утилиты наберите в командной строке
 
 ```sh
-wb-modbus-device-updater
+wb-modbus-device-editor
 ```
 
  # Windows

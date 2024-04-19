@@ -21,7 +21,6 @@ setup(
     install_requires=[
         "appdirs",
         "pymodbus",
-        "pyserial",
         "jinja2",
         "commentjson",
         "requests",

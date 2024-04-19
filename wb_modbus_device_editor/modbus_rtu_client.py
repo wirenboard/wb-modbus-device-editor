@@ -12,6 +12,7 @@ class ModbusRTUClient:
 
     def __init__(self, mb_params):
         self.client = ModbusSerialClient(
+            method="rtu",
             port=mb_params["port"],
             baudrate=mb_params["baudrate"],
             bytesize=mb_params["bytesize"],
