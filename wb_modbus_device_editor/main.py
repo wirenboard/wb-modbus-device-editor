@@ -40,11 +40,13 @@ class App:
 
         self.ui.write_log("Обновление шаблонов, пожалуйста подождите. Это может занять около минуты.")
 
+        # проверяем поток с обновлением шаблонов пореже - раз в 10 секунд чтобы не висел UI
         tk_threading.TaskInThread(
             self.ui.win,
             self.template_manager.update_templates,
             callback=self.btn_update_templates_callback,
             errback=self.btn_update_templates_errback,
+            polling=10000,
         )
 
         with self.io_lock:
