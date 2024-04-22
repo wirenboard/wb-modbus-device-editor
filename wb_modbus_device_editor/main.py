@@ -330,28 +330,37 @@ class App:
             self.io_running = True
 
     def read_params_from_modbus_callback(self, result):
-        failed = False
-        for id, param, value in result:
-            if value is None:
-                self.ui.write_log(
-                    f"Не удалось прочитать параметр {self._template.translate(param['title'])} {param['address']}"
-                )
-                self.ui.widget_disable(id)
-                failed = True
-            else:
-                self.ui.set_value(id, value, scale=param.get("scale"))
-                self.ui.widget_enable(id)
-        if failed:
-            self.ui.write_log(
-                "Не удалось прочитать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
-            )
-        else:
-            self.widgets_hide_by_condition()
-            self.ui.write_log("Чтение параметров завершено")
-        self.client.disconnect()
+        try:
+            failed = False
+            for id, param, value in result:
+                if value is None:
+                    self.ui.write_log(
+                        f"Не удалось прочитать параметр {self._template.translate(param['title'])} {param['address']}"
+                    )
+                    self.ui.widget_disable(id)
+                    failed = True
+                    continue
 
-        with self.io_lock:
-            self.io_running = False
+                try:
+                    self.ui.set_value(id, value, scale=param.get("scale"))
+                    self.ui.widget_enable(id)
+                except ValueError as error:
+                    self.ui.write_log(
+                        f"Не удалось обработать прочитанное значение {value} параметра \"{self._template.translate(param['title'])}\" регистр {param['address']}: {error}"
+                    )
+
+            if failed:
+                self.ui.write_log(
+                    "Не удалось прочитать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
+                )
+            else:
+                self.widgets_hide_by_condition()
+                self.ui.write_log("Чтение параметров завершено")
+        finally:
+            self.client.disconnect()
+
+            with self.io_lock:
+                self.io_running = False
 
     def read_params_from_modbus_errback(self, error: Exception):
         self.ui.write_log(f"Ошибка во время чтения параметов: {error}")
@@ -364,8 +373,14 @@ class App:
         result = []
 
         for id, param in params.items():
+
+            # если у параметра нет адреса, то его значение можно задать только извне и нельзя прочитать
+            address = param.get("address")
+            if address is None:
+                continue
+
             # адреса пишут то в HEX то в DEC, надо определять и преобразовывать в DEC
-            address = int(param["address"], 0) if isinstance(param["address"], str) else int(param["address"])
+            address = int(address, 0) if isinstance(address, str) else int(address)
 
             # бывает, что тип регистра не пишет, надо присвоить значение по умолчанию
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
@@ -420,7 +435,13 @@ class App:
 
         for id, param in params.items():
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
-            address = int(param["address"], 0) if isinstance(param["address"], str) else int(param["address"])
+
+            # если у параметра нет адреса, то его значение можно задать только извне и нельзя прочитать
+            address = param.get("address")
+            if address is None:
+                continue
+
+            address = int(address, 0) if isinstance(address, str) else int(address)
 
             if reg_type == "holding":
                 value = self.ui.get_value(id)
@@ -441,23 +462,25 @@ class App:
         return result
 
     def write_params_from_modbus_callback(self, result):
-        failed = False
-        for id, param, value in result:
-            if value is None:
+        try:
+            failed = False
+            for id, param, value in result:
+                if value is None:
+                    self.ui.write_log(
+                        f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}"
+                    )
+                    failed = True
+            if failed:
                 self.ui.write_log(
-                    f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}"
+                    "Не удалось записать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
                 )
-                failed = True
-        if failed:
-            self.ui.write_log(
-                "Не удалось записать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
-            )
-        else:
-            self.ui.write_log("Запись параметров завершена.")
-        self.client.disconnect()
+            else:
+                self.ui.write_log("Запись параметров завершена.")
+        finally:
+            self.client.disconnect()
 
-        with self.io_lock:
-            self.io_running = False
+            with self.io_lock:
+                self.io_running = False
 
     def write_params_from_modbus_errback(self, error):
         self.ui.write_log(f"Ошибка во время записи параметов: {error}")
