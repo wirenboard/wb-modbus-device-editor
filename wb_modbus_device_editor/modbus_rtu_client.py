@@ -18,6 +18,7 @@ class ModbusRTUClient:
             bytesize=mb_params["bytesize"],
             parity=mb_params["parity"],
             stopbits=mb_params["stopbits"],
+            strict=True,
         )
 
     def connect(self):

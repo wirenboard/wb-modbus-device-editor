@@ -344,9 +344,10 @@ class App:
                 try:
                     self.ui.set_value(id, value, scale=param.get("scale"))
                     self.ui.widget_enable(id)
-                except ValueError as error:
+                except ValueError:
+                    self.ui.widget_disable(id)
                     self.ui.write_log(
-                        f"Не удалось обработать прочитанное значение {value} параметра \"{self._template.translate(param['title'])}\" регистр {param['address']}: {error}"
+                        f"Не удалось обработать прочитанное значение {value} параметра \"{self._template.translate(param['title'])}\" регистр {param['address']}. Параметр скрыт."
                     )
 
             if failed:
