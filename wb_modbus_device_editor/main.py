@@ -4,7 +4,9 @@ import threading
 import tkinter
 import traceback
 
-from . import modbus_rtu_client, template_manager, ui_manager
+import pymodbus
+
+from . import modbus_rtu_client, template_manager, tk_threading, ui_manager
 
 
 class App:
@@ -23,7 +25,6 @@ class App:
         self.io_lock = threading.Lock()
 
         if self.template_manager.update_needed:
-            self.ui.write_log("Обновление шаблонов, пожалуйста подождите. Это может занять около минуты.")
             self.ui.win.after(100, self.btn_update_template_click)
         else:
             self.ui.write_log("Настройте параметры подключения и откройте шаблон.")
@@ -31,8 +32,35 @@ class App:
         self.ui.win.mainloop()
 
     def btn_update_template_click(self):
-        self.template_manager.update_templates()
+
+        with self.io_lock:
+            if self.io_running:
+                self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
+                return
+
+        self.ui.write_log("Обновление шаблонов, пожалуйста подождите. Это может занять около минуты.")
+
+        # проверяем поток с обновлением шаблонов пореже - раз в 10 секунд чтобы не висел UI
+        tk_threading.TaskInThread(
+            self.ui.win,
+            self.template_manager.update_templates,
+            callback=self.btn_update_templates_callback,
+            errback=self.btn_update_templates_errback,
+            polling=10000,
+        )
+
+        with self.io_lock:
+            self.io_running = True
+
+    def btn_update_templates_callback(self, result):
         self.ui.write_log("Обновление завершено. Настройте параметры подключения и откройте шаблон.")
+        with self.io_lock:
+            self.io_running = False
+
+    def btn_update_templates_errback(self, error):
+        self.ui.write_log(f"Ошибка при обновлении шаблонов: {error}")
+        with self.io_lock:
+            self.io_running = False
 
     # действие при нажатии на кнопку Открыть шаблон
     def btn_open_template_click(self, event):
@@ -51,7 +79,7 @@ class App:
         self.ui.delete_widgets()
 
         self.ui.write_log("Чтение файла {}".format(file_path))
-        tk_threading.run_in_thread(
+        tk_threading.TaskInThread(
             self.ui.win,
             self.load_template,
             kwargs={"file_path": file_path},
@@ -267,14 +295,20 @@ class App:
             iterations += 1
 
     def btn_read_params_click(self, event):
-        if self._template is None:
-            self.ui.write_log("Откройте шаблон")
-            return
 
         with self.io_lock:
             if self.io_running:
                 self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
                 return
+
+        if self._template is None:
+            self.ui.write_log("Сначала откройте шаблон")
+            return
+
+        parameters = self._template.properties["device"]["parameters"]
+        if not parameters:
+            self.ui.write_log(f"Нет доступных для ректирования параметров")
+            return
 
         mb_params = self.ui.get_modbus_params()
         self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
@@ -283,9 +317,8 @@ class App:
             self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
             return
 
-        self.ui.write_log(f"Выполняется чтение параметров")
-        parameters = self._template.properties["device"]["parameters"]
-        tk_threading.run_in_thread(
+        self.ui.write_log(f"Выполняется чтение параметров устройства")
+        tk_threading.TaskInThread(
             self.ui.win,
             self.read_params_from_modbus,
             kwargs={"client": self.client, "slave_id": int(mb_params["slave_id"]), "params": parameters},
@@ -297,30 +330,40 @@ class App:
             self.io_running = True
 
     def read_params_from_modbus_callback(self, result):
-        failed = False
-        for id, param, value in result:
-            if value is None:
+        try:
+            failed = False
+            for id, param, value in result:
+                if value is None:
+                    self.ui.write_log(
+                        f"Не удалось прочитать параметр {self._template.translate(param['title'])} {param['address']}"
+                    )
+                    self.ui.widget_disable(id)
+                    failed = True
+                    continue
+
+                try:
+                    self.ui.set_value(id, value, scale=param.get("scale"))
+                    self.ui.widget_enable(id)
+                except ValueError:
+                    self.ui.widget_disable(id)
+                    self.ui.write_log(
+                        f"Не удалось обработать прочитанное значение {value} параметра \"{self._template.translate(param['title'])}\" регистр {param['address']}. Параметр скрыт."
+                    )
+
+            if failed:
                 self.ui.write_log(
-                    f"Не удалось прочитать параметр {self._template.translate(param['title'])} {param['address']}"
+                    "Не удалось прочитать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
                 )
-                self.ui.widget_disable(id)
-                failed = True
             else:
-                self.ui.set_value(id, value, scale=param.get("scale"))
-                self.ui.widget_enable(id)
-        if failed:
-            self.ui.write_log(
-                "Не удалось прочитать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
-            )
-        else:
-            self.widgets_hide_by_condition()
-            self.ui.write_log("Чтение параметров завершено")
-        self.client.disconnect()
+                self.widgets_hide_by_condition()
+                self.ui.write_log("Чтение параметров завершено")
+        finally:
+            self.client.disconnect()
 
-        with self.io_lock:
-            self.io_running = False
+            with self.io_lock:
+                self.io_running = False
 
-    def read_params_from_modbus_errback(self, error):
+    def read_params_from_modbus_errback(self, error: Exception):
         self.ui.write_log(f"Ошибка во время чтения параметов: {error}")
         self.client.disconnect()
 
@@ -331,8 +374,14 @@ class App:
         result = []
 
         for id, param in params.items():
+
+            # если у параметра нет адреса, то его значение можно задать только извне и нельзя прочитать
+            address = param.get("address")
+            if address is None:
+                continue
+
             # адреса пишут то в HEX то в DEC, надо определять и преобразовывать в DEC
-            address = int(param["address"], 0) if isinstance(param["address"], str) else int(param["address"])
+            address = int(address, 0) if isinstance(address, str) else int(address)
 
             # бывает, что тип регистра не пишет, надо присвоить значение по умолчанию
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
@@ -342,19 +391,26 @@ class App:
                     value = client.read_holding(slave_id=slave_id, reg_address=address)
                     result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
-                    raise RuntimeError("Нет связи с устройством. Проверье, верно ли указан адрес.") from e
+                    raise RuntimeError(
+                        "Нет связи с устройством. Проверьте, что указан верный адрес устройства и выбран верный шаблон"
+                    ) from e
 
         return result
 
     def btn_write_params_click(self, event):
-        if self._template is None:
-            self.ui.write_log("Откройте шаблон")
-            return
-
         with self.io_lock:
             if self.io_running:
                 self.ui.write_log("Выполняется операция ввода/вывода, дождитесь завершения")
                 return
+
+        if self._template is None:
+            self.ui.write_log("Сначала откройте шаблон")
+            return
+
+        parameters = self._template.properties["device"]["parameters"]
+        if not parameters:
+            self.ui.write_log(f"Нет доступных для ректирования параметров")
+            return
 
         mb_params = self.ui.get_modbus_params()
         self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
@@ -364,8 +420,7 @@ class App:
             return
 
         self.ui.write_log(f"Выполняется запись параметров")
-        parameters = self._template.properties["device"]["parameters"]
-        tk_threading.run_in_thread(
+        tk_threading.TaskInThread(
             self.ui.win,
             self.write_params_to_modbus,
             kwargs={"client": self.client, "slave_id": int(mb_params["slave_id"]), "params": parameters},
@@ -381,7 +436,13 @@ class App:
 
         for id, param in params.items():
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
-            address = int(param["address"], 0) if isinstance(param["address"], str) else int(param["address"])
+
+            # если у параметра нет адреса, то его значение можно задать только извне и нельзя прочитать
+            address = param.get("address")
+            if address is None:
+                continue
+
+            address = int(address, 0) if isinstance(address, str) else int(address)
 
             if reg_type == "holding":
                 value = self.ui.get_value(id)
@@ -395,28 +456,32 @@ class App:
                     value = client.write_holding(slave_id, address, value)
                     result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
-                    raise RuntimeError("Нет связи с устройством. Проверье, верно ли указан адрес.") from e
+                    raise RuntimeError(
+                        "Нет связи с устройством. Проверьте, что указан верный адрес устройства и выбран верный шаблон"
+                    ) from e
 
         return result
 
     def write_params_from_modbus_callback(self, result):
-        failed = False
-        for id, param, value in result:
-            if value is None:
+        try:
+            failed = False
+            for id, param, value in result:
+                if value is None:
+                    self.ui.write_log(
+                        f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}"
+                    )
+                    failed = True
+            if failed:
                 self.ui.write_log(
-                    f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}"
+                    "Не удалось записать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
                 )
-                failed = True
-        if failed:
-            self.ui.write_log(
-                "Не удалось записать некоторые параметры. Возможно их нет в этой версии прошивки устройства. Такие параметры будут недоступны для редактирования."
-            )
-        else:
-            self.ui.write_log("Запись параметров завершена.")
-        self.client.disconnect()
+            else:
+                self.ui.write_log("Запись параметров завершена.")
+        finally:
+            self.client.disconnect()
 
-        with self.io_lock:
-            self.io_running = False
+            with self.io_lock:
+                self.io_running = False
 
     def write_params_from_modbus_errback(self, error):
         self.ui.write_log(f"Ошибка во время записи параметов: {error}")
