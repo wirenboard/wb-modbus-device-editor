@@ -1,5 +1,4 @@
-# py-modbus-device-editor
-Утилита редактирования параметров Modbus-устройств
+# Утилита редактирования параметров Modbus-устройств
 
 ![Screenshot](images/main_window.png)
 
