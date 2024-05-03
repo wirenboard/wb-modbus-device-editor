@@ -1,5 +1,6 @@
 appdirs
 pymodbus==3.6.4
+pyserial==3.5
 jinja2
 commentjson
 requests
