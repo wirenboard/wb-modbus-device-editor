@@ -25,6 +25,7 @@ setup(
         "commentjson",
         "requests",
         "semantic_version",
+        "pyserial",
     ],
     license="MIT",
 )
