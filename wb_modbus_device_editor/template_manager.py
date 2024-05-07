@@ -152,15 +152,7 @@ class TemplateManager:
         source_raw = requests.get(tarball_url, timeout=1, stream=True)
         source_tar = tarfile.open(fileobj=source_raw.raw, mode="r|gz")
 
-        # https://docs.python.org/3.9/library/tarfile.html#tarfile.TarFile.extractall
-        if semantic_version.Version(platform.python_version()) < semantic_version.Version("3.9.17"):
-            source_tar.extractall(path=templates_dir, members=self._get_templates_from_tar(source_tar))
-        else:
-            source_tar.extractall(
-                path=templates_dir,
-                members=self._get_templates_from_tar(source_tar),
-                filter="data",
-            )
+        source_tar.extractall(path=templates_dir, members=self._get_templates_from_tar(source_tar))
 
         template_loader = jinja2.FileSystemLoader(searchpath=templates_dir)
         template_env = jinja2.Environment(loader=template_loader)
