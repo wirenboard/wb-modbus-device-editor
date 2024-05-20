@@ -3,7 +3,7 @@ buildDebSbuild(
     repos: ['devTools'],
     defaultRunLintian: true,
     defaultRunPythonChecks: true,
-    releaseFilesFilter: "**/*.deb, **/*.zip",
+    releaseFilesFilter: "**/*.deb, **/*.zip, **/*.AppImage",
     customBuildSteps: {
         stage("Build exe") {
             sh 'docker run -t -v $DEV_VOLUME -w $PWD/$PROJECT_SUBDIR tobix/pywine:3.10 bash -c "./Build.sh clean &&  ./Build.sh windows"'
@@ -14,7 +14,7 @@ buildDebSbuild(
         stage("Build appimage") {
             sh 'wbdev root bash -c "apt-get update && apt-get install python3-tk -y && cd $PROJECT_SUBDIR && ./Build.sh clean && ./Build.sh linux"'
             sh "cp -r $PROJECT_SUBDIR/dist/ $RESULT_SUBDIR/"
-            archiveArtifacts artifacts: "$RESULT_SUBDIR/dist/linux/*"
+            archiveArtifacts artifacts: "$RESULT_SUBDIR/dist/linux/*.AppImage"
         }
     }
 )
