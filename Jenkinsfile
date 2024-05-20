@@ -12,7 +12,7 @@ buildDebSbuild(
             archiveArtifacts artifacts: "$RESULT_SUBDIR/dist/windows/*.zip"
         }
         stage("Build appimage") {
-            sh 'wbdev root bash -c "apt-get update && apt-get install python3-tk -y && ./Build.sh clean &&  ./Build.sh linux"'
+            sh 'wbdev root bash -c "apt-get update && apt-get install python3-tk -y && cd $PROJECT_SUBDIR && ./Build.sh clean && ./Build.sh linux"'
         }
     }
 )
