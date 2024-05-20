@@ -13,6 +13,8 @@ buildDebSbuild(
         }
         stage("Build appimage") {
             sh 'wbdev root bash -c "apt-get update && apt-get install python3-tk -y && cd $PROJECT_SUBDIR && ./Build.sh clean && ./Build.sh linux"'
+            sh "cp -r $PROJECT_SUBDIR/dist/ $RESULT_SUBDIR/"
+            archiveArtifacts artifacts: "$RESULT_SUBDIR/dist/linux/*"
         }
     }
 )
