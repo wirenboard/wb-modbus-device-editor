@@ -35,7 +35,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="wb-modbus-device-editor",
+    name="wb-modbus-device-editor_x86_64.AppImage",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
