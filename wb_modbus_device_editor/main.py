@@ -6,7 +6,7 @@ import traceback
 
 import pymodbus
 
-from . import modbus_rtu_client, template_manager, tk_threading, ui_manager
+from . import modbus_client, template_manager, tk_threading, ui_manager
 
 
 class App:
@@ -23,6 +23,8 @@ class App:
         self._template = None
         self.io_running = False
         self.io_lock = threading.Lock()
+
+        self.client = None
 
         if self.template_manager.update_needed:
             self.ui.win.after(100, self.btn_update_template_click)
@@ -311,7 +313,15 @@ class App:
             return
 
         mb_params = self.ui.get_modbus_params()
-        self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
+        if mb_params["mode"] == "RTU":
+            self.client = modbus_client.ModbusRTUClient(mb_params)
+        elif mb_params["mode"] == "TCP":
+            self.client = modbus_client.ModbusTCPClient(mb_params)
+        elif mb_params["mode"] == "RTU over TCP":
+            self.client = modbus_client.ModbusRTUoverTCPClient(mb_params)
+        else:
+            self.ui.write_log("Выбран неизвестный режим подключения!")
+            return
 
         if not self.client.connect():
             self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
@@ -413,7 +423,7 @@ class App:
             return
 
         mb_params = self.ui.get_modbus_params()
-        self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
+        self.client = modbus_client.ModbusRTUClient(mb_params)
 
         if not self.client.connect():
             self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")

@@ -1,3 +1,4 @@
+import re
 import tkinter
 import tkinter.scrolledtext as scrolltext
 from datetime import datetime
@@ -22,7 +23,7 @@ class UiManager:
     def __init__(self):
         self.win = tkinter.Tk()
         self.win.title("Python Modbus Device Editor")
-        self.win.geometry("1430x750")
+        self.win.geometry("1490x750")
 
         style = ttk.Style(self.win)
         style.theme_use("clam")
@@ -52,77 +53,13 @@ class UiManager:
             height=50,
         )
 
-        mb_settings = self.create_group(
-            parent=top_frame,
-            id="nodel_mb_settings",
-            title="Настройки подключения",
-            side=tkinter.LEFT,
-            fill=tkinter.BOTH,
-            expand=False,
-        )
-
-        mb_port = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_port",
-            title="Порт",
-            dic=self.get_ports(),
-            default=None,
-            width=40,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
-        )
-
-        mb_baudrate = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_baudrate",
-            title="Скорость обмена",
-            dic=self.gen_baudrate_dic(),
-            default=9600,
-            width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
-        )
-
-        mb_bytesize = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_bytesize",
-            title="Биты данных",
-            dic=self.gen_bytesize_dic(),
-            default=8,
-            width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
-        )
-
-        mb_parity = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_parity",
-            title="Четность",
-            dic=self.gen_parity_dic(),
-            default="N",
-            width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
-        )
-
-        mb_stopbits = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_stopbits",
-            title="Стоп биты",
-            dic=self.gen_stopbits_dic(),
-            default=2,
-            width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
-        )
-
         mb_actions = self.create_group(
             parent=top_frame,
             id="nodel_mb_actions",
             title="Чтение/запись параметров",
-            side=tkinter.LEFT,
+            side=tkinter.RIGHT,
             fill=tkinter.BOTH,
-            expand=True,
+            expand=False,
         )
 
         self.mb_slave_id = self.create_spinbox(
@@ -161,6 +98,29 @@ class UiManager:
             side=tkinter.LEFT,
             anchor=tkinter.SW,
         )
+
+        mb_settings = self.create_group(
+            parent=top_frame,
+            id="nodel_mb_settings",
+            title="Настройки подключения",
+            side=tkinter.RIGHT,
+            fill=tkinter.BOTH,
+            expand=True,
+        )
+
+        mb_mode = self.create_combobox(
+            parent=mb_settings,
+            id="nodel_mb_mode",
+            title="Режим",
+            dic=self.get_mode_dic(),
+            default="RTU",
+            width=12,
+            selected_func=self.mod_selected,
+            side=tkinter.LEFT,
+            anchor=tkinter.SW,
+        )
+
+        self.create_rtu_settings(mb_settings)
 
         # Нижняя часть окна
         bottom_frame = self.create_frame(
@@ -203,6 +163,84 @@ class UiManager:
             expand=True,
         )
         self.log.configure(state="disabled")
+
+    def create_rtu_settings(self, mb_settings):
+        mb_port = self.create_combobox(
+            parent=mb_settings,
+            id="nodel_mb_rtu_port",
+            title="Порт",
+            dic=self.get_ports(),
+            default=None,
+            width=40,
+            side=tkinter.LEFT,
+            anchor=tkinter.SW,
+        )
+
+        mb_baudrate = self.create_combobox(
+            parent=mb_settings,
+            id="nodel_mb_rtu_baudrate",
+            title="Скорость обмена",
+            dic=self.gen_baudrate_dic(),
+            default=9600,
+            width=8,
+            side=tkinter.LEFT,
+            anchor=tkinter.SW,
+        )
+
+        mb_bytesize = self.create_combobox(
+            parent=mb_settings,
+            id="nodel_mb_rtu_bytesize",
+            title="Биты данных",
+            dic=self.gen_bytesize_dic(),
+            default=8,
+            width=8,
+            side=tkinter.LEFT,
+            anchor=tkinter.SW,
+        )
+
+        mb_parity = self.create_combobox(
+            parent=mb_settings,
+            id="nodel_mb_rtu_parity",
+            title="Четность",
+            dic=self.gen_parity_dic(),
+            default="N",
+            width=8,
+            side=tkinter.LEFT,
+            anchor=tkinter.SW,
+        )
+
+        mb_stopbits = self.create_combobox(
+            parent=mb_settings,
+            id="nodel_mb_rtu_stopbits",
+            title="Стоп биты",
+            dic=self.gen_stopbits_dic(),
+            default=2,
+            width=8,
+            side=tkinter.LEFT,
+            anchor=tkinter.SW,
+        )
+
+    def create_tcp_settings(self, mb_settings):
+        self.create_text_input(
+            parent=mb_settings,
+            id="nodel_mb_tcp_ip",
+            title="IP",
+            validation_func=self.validate_ipv4,
+            side=tkinter.LEFT,
+        )
+
+        self.tcp_port = self.create_spinbox(
+            parent=mb_settings,
+            id="nodel_mb_tcp_port",
+            title="Порт",
+            min_=1,
+            max_=65535,
+            value_type="int",
+            default=23,
+            width=4,
+            description=None,
+            side=tkinter.LEFT,
+        )
 
     def _widget_commit(self, widget, widget_id, widget_type, parent_id, widget_opts):
         widget.id = widget_id
@@ -318,7 +356,7 @@ class UiManager:
         )
         return button
 
-    def create_combobox(self, parent, id, title, dic, default, width, **opts):
+    def create_combobox(self, parent, id, title, dic, default, width, selected_func=None, **opts):
         enums = dic["enum_titles"]
         group = self.create_group(parent, id + "_title", title, relief=tkinter.FLAT, **opts)
         combobox = ttk.Combobox(group, values=enums, state="readonly", width=width)
@@ -330,6 +368,9 @@ class UiManager:
             widget_opts={"padx": 5, "pady": 0, "side": tkinter.TOP, "anchor": tkinter.NW},
             parent_id=parent.id,
         )
+
+        if selected_func:
+            combobox.bind("<<ComboboxSelected>>", selected_func)
 
         if default in dic["enum"]:
             index = dic["enum"].index(default)
@@ -393,6 +434,27 @@ class UiManager:
             )
         return spinbox
 
+    def create_text_input(self, parent: tkinter.Widget, id, title, validation_func, **opts):
+        group = self.create_group(parent, id + "_title", title, relief=tkinter.FLAT, **opts)
+
+        value = tkinter.StringVar()
+        validatecommand = group.register(validation_func)
+        entry = ttk.Entry(
+            group,
+            textvariable=value,
+            width=23,
+            validate="key",
+            validatecommand=(validatecommand, "%P"),
+            state="normal",
+        )
+        self._widget_commit(
+            widget=entry,
+            widget_id=id,
+            widget_type="entry",
+            widget_opts={"padx": 5, "pady": 0, "side": tkinter.TOP, "anchor": tkinter.NW},
+            parent_id=parent.id,
+        )
+
     def is_exists_widget(self, id):
         return self.widgets.get(id) is not None
 
@@ -450,14 +512,25 @@ class UiManager:
         return values
 
     def get_modbus_params(self):
-        return {
-            "slave_id": self.get_value("nodel_mb_slave_id"),
-            "port": self.get_value("nodel_mb_port"),
-            "baudrate": self.get_value("nodel_mb_baudrate"),
-            "bytesize": self.get_value("nodel_mb_bytesize"),
-            "parity": self.get_value("nodel_mb_parity"),
-            "stopbits": self.get_value("nodel_mb_stopbits"),
-        }
+        mode = self.get_value("nodel_mb_mode")
+        if mode == "RTU":
+            return {
+                "mode": self.get_value("nodel_mb_mode"),
+                "slave_id": self.get_value("nodel_mb_slave_id"),
+                "port": self.get_value("nodel_mb_rtu_port"),
+                "baudrate": self.get_value("nodel_mb_rtu_baudrate"),
+                "bytesize": self.get_value("nodel_mb_rtu_bytesize"),
+                "parity": self.get_value("nodel_mb_rtu_parity"),
+                "stopbits": self.get_value("nodel_mb_rtu_stopbits"),
+            }
+        if mode in ["TCP", "RTU over TCP"]:
+            return {
+                "mode": self.get_value("nodel_mb_mode"),
+                "slave_id": self.get_value("nodel_mb_slave_id"),
+                "ip": self.get_value("nodel_mb_tcp_ip"),
+                "port": self.get_value("nodel_mb_tcp_port"),
+            }
+        return None
 
     def get_widget(self, widget_id):
         return self.widgets.get(widget_id)
@@ -553,3 +626,28 @@ class UiManager:
         enum = [1, 2]
         enum_titles = ["1", "2"]
         return {"enum": enum, "enum_titles": enum_titles}
+
+    def get_mode_dic(self):
+        enum = ["RTU", "TCP", "RTU over TCP"]
+        enum_titles = ["RTU", "TCP", "RTU over TCP"]
+        return {"enum": enum, "enum_titles": enum_titles}
+
+    def validate_ipv4(self, ip):
+        test = re.compile(
+            r"(^\d{0,3}$|^\d{1,3}\.\d{0,3}$|^\d{1,3}\.\d{1,3}\.\d{0,3}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{0,3}$)"
+        )
+        return test.match(ip)
+
+    def mod_selected(self, event):
+        combobox = event.widget
+        new_value = combobox.get()
+        widgets = dict(self.widgets)
+        for key in widgets:
+            if "nodel_mb_rtu" in key or "nodel_mb_tcp" in key:
+                self.remove_widgets_item(key)
+
+        parent = self.widgets[combobox.parent_id]
+        if new_value in ["TCP", "RTU over TCP"]:
+            self.create_tcp_settings(parent)
+        elif new_value == "RTU":
+            self.create_rtu_settings(parent)
