@@ -1,3 +1,4 @@
+import ipaddress
 import re
 import tkinter
 import tkinter.scrolledtext as scrolltext
@@ -443,7 +444,7 @@ class UiManager:
             group,
             textvariable=value,
             width=23,
-            validate="key",
+            validate="focusout",
             validatecommand=(validatecommand, "%P"),
             state="normal",
         )
@@ -633,10 +634,13 @@ class UiManager:
         return {"enum": enum, "enum_titles": enum_titles}
 
     def validate_ipv4(self, ip):
-        test = re.compile(
-            r"(^\d{0,3}$|^\d{1,3}\.\d{0,3}$|^\d{1,3}\.\d{1,3}\.\d{0,3}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{0,3}$)"
-        )
-        return test.match(ip)
+        try:
+            if ip != "":
+                ipaddress.ip_address(ip)
+            return True
+        except ValueError:
+            self.write_log(f"Неверный формат IP адреса: {ip}")
+            return False
 
     def mod_selected(self, event):
         combobox = event.widget
