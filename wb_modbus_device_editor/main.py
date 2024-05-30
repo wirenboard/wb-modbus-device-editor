@@ -324,7 +324,11 @@ class App:
             return
 
         if not self.client.connect():
-            self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
+            if mb_params["mode"] == "RTU":
+                msg = f"Невозможно открыть порт {mb_params['port']}"
+            elif mb_params["mode"] in ["TCP", "RTU over TCP"]:
+                msg = f"Невозможно открыть порт {mb_params['ip']}:{mb_params['port']}"
+            self.ui.write_log(msg)
             return
 
         self.ui.write_log(f"Выполняется чтение параметров устройства")
@@ -402,7 +406,7 @@ class App:
                     result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
                     raise RuntimeError(
-                        "Нет связи с устройством. Проверьте, что указан верный адрес устройства и выбран верный шаблон"
+                        "Нет связи с устройством. Проверьте, что указаны верные параметры подключения, адрес устройства и выбран верный шаблон"
                     ) from e
 
         return result
