@@ -1,5 +1,4 @@
 import ipaddress
-import re
 import tkinter
 import tkinter.scrolledtext as scrolltext
 from datetime import datetime
@@ -479,7 +478,7 @@ class UiManager:
     def get_value(self, widget_id):
         widget = self.widgets[widget_id]
         if "disabled" not in widget.state():
-            if widget.type == "spinbox":
+            if widget.type in ["spinbox", "entry"]:
                 return widget.get()
 
             if widget.type == "combobox":
@@ -514,23 +513,25 @@ class UiManager:
 
     def get_modbus_params(self):
         mode = self.get_value("nodel_mb_mode")
+        common_params = {
+            "mode": mode,
+            "slave_id": self.get_value("nodel_mb_slave_id"),
+        }
         if mode == "RTU":
-            return {
-                "mode": self.get_value("nodel_mb_mode"),
-                "slave_id": self.get_value("nodel_mb_slave_id"),
+            rtu_params = {
                 "port": self.get_value("nodel_mb_rtu_port"),
                 "baudrate": self.get_value("nodel_mb_rtu_baudrate"),
                 "bytesize": self.get_value("nodel_mb_rtu_bytesize"),
                 "parity": self.get_value("nodel_mb_rtu_parity"),
                 "stopbits": self.get_value("nodel_mb_rtu_stopbits"),
             }
+            return {**common_params, **rtu_params}
         if mode in ["TCP", "RTU over TCP"]:
-            return {
-                "mode": self.get_value("nodel_mb_mode"),
-                "slave_id": self.get_value("nodel_mb_slave_id"),
+            tcp_params = {
                 "ip": self.get_value("nodel_mb_tcp_ip"),
                 "port": self.get_value("nodel_mb_tcp_port"),
             }
+            return {**common_params, **tcp_params}
         return None
 
     def get_widget(self, widget_id):
@@ -635,7 +636,7 @@ class UiManager:
 
     def validate_ipv4(self, ip):
         try:
-            if ip != "":
+            if ip:
                 ipaddress.ip_address(ip)
             return True
         except ValueError:
@@ -645,13 +646,17 @@ class UiManager:
     def mod_selected(self, event):
         combobox = event.widget
         new_value = combobox.get()
-        widgets = dict(self.widgets)
-        for key in widgets:
-            if "nodel_mb_rtu" in key or "nodel_mb_tcp" in key:
-                self.remove_widgets_item(key)
+        old_value = "TCP" if self.widgets.get("nodel_mb_tcp_ip") else "RTU"
+        if (old_value == "RTU" and new_value in ["TCP", "RTU over TCP"]) or (
+            old_value == "TCP" and new_value == "RTU"
+        ):  # чтобы при переключении с tcp на rtu over tcp не сбрасывались настройки подключения
+            widgets = dict(self.widgets)
+            for key in widgets:
+                if "nodel_mb_rtu" in key or "nodel_mb_tcp" in key:
+                    self.remove_widgets_item(key)
 
-        parent = self.widgets[combobox.parent_id]
-        if new_value in ["TCP", "RTU over TCP"]:
-            self.create_tcp_settings(parent)
-        elif new_value == "RTU":
-            self.create_rtu_settings(parent)
+            parent = self.widgets[combobox.parent_id]
+            if new_value in ["TCP", "RTU over TCP"]:
+                self.create_tcp_settings(parent)
+            elif new_value == "RTU":
+                self.create_rtu_settings(parent)
