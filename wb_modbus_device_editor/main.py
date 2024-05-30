@@ -6,7 +6,7 @@ import traceback
 
 import pymodbus
 
-from . import modbus_rtu_client, template_manager, tk_threading, ui_manager
+from . import modbus_client, template_manager, tk_threading, ui_manager
 
 
 class App:
@@ -23,6 +23,8 @@ class App:
         self._template = None
         self.io_running = False
         self.io_lock = threading.Lock()
+
+        self.client = None
 
         if self.template_manager.update_needed:
             self.ui.win.after(100, self.btn_update_template_click)
@@ -311,10 +313,22 @@ class App:
             return
 
         mb_params = self.ui.get_modbus_params()
-        self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
+        if mb_params["mode"] == "RTU":
+            self.client = modbus_client.ModbusRTUClient(mb_params)
+        elif mb_params["mode"] == "TCP":
+            self.client = modbus_client.ModbusTCPClient(mb_params)
+        elif mb_params["mode"] == "RTU over TCP":
+            self.client = modbus_client.ModbusRTUoverTCPClient(mb_params)
+        else:
+            self.ui.write_log("Выбран неизвестный режим подключения!")
+            return
 
         if not self.client.connect():
-            self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
+            if mb_params["mode"] == "RTU":
+                msg = f"Невозможно открыть порт {mb_params['port']}"
+            elif mb_params["mode"] in ["TCP", "RTU over TCP"]:
+                msg = f"Невозможно открыть порт {mb_params['ip']}:{mb_params['port']}"
+            self.ui.write_log(msg)
             return
 
         self.ui.write_log(f"Выполняется чтение параметров устройства")
@@ -392,7 +406,7 @@ class App:
                     result.append((id, param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
                     raise RuntimeError(
-                        "Нет связи с устройством. Проверьте, что указан верный адрес устройства и выбран верный шаблон"
+                        "Нет связи с устройством. Проверьте, что указаны верные параметры подключения, адрес устройства и выбран верный шаблон"
                     ) from e
 
         return result
@@ -413,7 +427,7 @@ class App:
             return
 
         mb_params = self.ui.get_modbus_params()
-        self.client = modbus_rtu_client.ModbusRTUClient(mb_params)
+        self.client = modbus_client.ModbusRTUClient(mb_params)
 
         if not self.client.connect():
             self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
