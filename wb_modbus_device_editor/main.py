@@ -427,7 +427,15 @@ class App:
             return
 
         mb_params = self.ui.get_modbus_params()
-        self.client = modbus_client.ModbusRTUClient(mb_params)
+        if mb_params["mode"] == "RTU":
+            self.client = modbus_client.ModbusRTUClient(mb_params)
+        elif mb_params["mode"] == "TCP":
+            self.client = modbus_client.ModbusTCPClient(mb_params)
+        elif mb_params["mode"] == "RTU over TCP":
+            self.client = modbus_client.ModbusRTUoverTCPClient(mb_params)
+        else:
+            self.ui.write_log("Выбран неизвестный режим подключения!")
+            return
 
         if not self.client.connect():
             self.ui.write_log(f"Невозможно открыть порт {mb_params['port']}")
