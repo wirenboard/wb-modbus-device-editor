@@ -1,3 +1,9 @@
+wb-modbus-device-editor (1.4.1) stable; urgency=medium
+
+  * Fix parameters write
+
+ --  Ekaterina Volkova <ekateluv@ekateluv>  Fri, 21 Jun 2024 15:57:25 +0300
+
 wb-modbus-device-editor (1.4.0) stable; urgency=medium
 
   * Add TCP and RTU over TCP connection modes
