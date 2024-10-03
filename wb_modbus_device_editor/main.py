@@ -4,9 +4,11 @@ import threading
 import tkinter
 import traceback
 
+import modbus_client
 import pymodbus
-
-from . import modbus_client, template_manager, tk_threading, ui_manager
+import template_manager
+import tk_threading
+import ui_manager
 
 
 class App:
@@ -27,11 +29,11 @@ class App:
         self.client = None
 
         if self.template_manager.update_needed:
-            self.ui.win.after(100, self.btn_update_template_click)
+            self.ui.window.after(100, self.btn_update_template_click)
         else:
             self.ui.write_log("Настройте параметры подключения и откройте шаблон.")
 
-        self.ui.win.mainloop()
+        self.ui.window.mainloop()
 
     def btn_update_template_click(self):
 
@@ -119,8 +121,8 @@ class App:
             curr_frame = parent.curr_frame
 
             # перебираем безгрупные параметры и создаём для них виджеты
-            for id, parameter in parameters.items():
-                self.create_widget(id, parent, parameter)
+            for parameter in parameters:
+                self.create_widget(parent, parameter)
 
         # создаём вкладки из групп без поля group
         if self.create_pages():
@@ -202,10 +204,13 @@ class App:
         parameters = self._template.get_parameters_by_group_id(group_id)
         parent = self.get_current_frame(group_widget)
 
-        for id, parameter in parameters.items():
-            widget = self.create_widget(id, parent, parameter)
+        for parameter in parameters:
+            widget = self.create_widget(parent, parameter)
             widget.condition = parameter.get("condition")
             parent.condition = parameter.get("condition")
+            if not hasattr(parent, "conditions"):
+                parent.conditions = []
+            parent.conditions.append(parameter.get("condition"))
 
     def get_value_type_type(self, param):
         if "enum" in param:
@@ -216,17 +221,18 @@ class App:
 
         return "int"
 
-    def create_widget(self, id, parent, param):
+    def create_widget(self, parent, param):
         value_type = self.get_value_type_type(
             param
         )  # от типа значения зависит тип и настройки создаваемого виджета
 
         title = self._template.translate(param.get("title"))
         default = param.get("default")
+        id = param.get("id")
 
         # есть перечисление — создаём combobox
         if value_type == "enum":
-            enum = self._template.get_parameter_enum(id)
+            enum = self._template.get_parameter_enum(param)
             widget = self.ui.create_combobox(
                 parent=parent,
                 id=id,
@@ -257,6 +263,7 @@ class App:
                 anchor=tkinter.NW,
             )
 
+        self.widgets.update({param: widget})
         return widget
 
     # получаем текущий фрейм
@@ -387,7 +394,7 @@ class App:
     def read_params_from_modbus(self, client, slave_id, params):
         result = []
 
-        for id, param in params.items():
+        for param in params:
 
             # если у параметра нет адреса, то его значение можно задать только извне и нельзя прочитать
             address = param.get("address")
@@ -403,7 +410,7 @@ class App:
             if reg_type == "holding":
                 try:
                     value = client.read_holding(slave_id=slave_id, reg_address=address)
-                    result.append((id, param, value))
+                    result.append((param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
                     raise RuntimeError(
                         "Нет связи с устройством. Проверьте, что указаны верные параметры подключения, адрес устройства и выбран верный шаблон"
@@ -456,7 +463,8 @@ class App:
     def write_params_to_modbus(self, client, slave_id, params):
         result = []
 
-        for id, param in params.items():
+        for param in params:
+            id = param.get("id")
             reg_type = "holding" if param.get("reg_type") is None else param.get("reg_type")
 
             # если у параметра нет адреса, то его значение можно задать только извне и нельзя прочитать
@@ -476,7 +484,7 @@ class App:
 
                 try:
                     value = client.write_holding(slave_id, address, value)
-                    result.append((id, param, value))
+                    result.append((param, value))
                 except pymodbus.exceptions.ModbusIOException as e:
                     raise RuntimeError(
                         "Нет связи с устройством. Проверьте, что указан верный адрес устройства и выбран верный шаблон"
@@ -487,7 +495,7 @@ class App:
     def write_params_from_modbus_callback(self, result):
         try:
             failed = False
-            for id, param, value in result:
+            for param, value in result:
                 if value is None:
                     self.ui.write_log(
                         f"Не удалось записать параметр {self._template.translate(param['title'])} {param['address']}"

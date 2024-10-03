@@ -35,11 +35,11 @@ class Template:
             }
             return basic_info
 
-    def _convert_list_to_dict(self, source):
-        if source == None or isinstance(source, dict):
+    def _convert_dict_to_list(self, source):
+        if source == None or isinstance(source, list):
             return source
 
-        return {item.pop("id"): item for item in source}
+        return [value | {"id": key} for key, value in source.items()]
 
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
@@ -50,8 +50,8 @@ class Template:
                 "title": dict_info.get("title", None),
                 "device": {
                     "name": dict_info["device"]["name"],
-                    "groups": self._convert_list_to_dict(groups),
-                    "parameters": self._convert_list_to_dict(parameters),
+                    "groups": self._convert_dict_to_list(groups),
+                    "parameters": self._convert_dict_to_list(parameters),
                     "translations": dict_info["device"].get("translations"),
                     "setup": dict_info["device"].get("setup", None),
                 },
@@ -63,15 +63,14 @@ class Template:
             return None
 
         parameters = self._properties["device"]["parameters"]
-        result = {}
+        result = []
         if parameters is not None:
-            for id, parameter in parameters.items():
+            for parameter in parameters:
                 if parameter.get("group") == group_id:
-                    result.update({id: parameter})
+                    result.append(parameter)
         return result
 
-    def get_parameter_enum(self, parameter_id) -> dict:
-        parameter = self._properties["device"]["parameters"][parameter_id]
+    def get_parameter_enum(self, parameter) -> dict:
         enum = parameter["enum"]
         enum_titles = parameter["enum_titles"]
         for i, title in enumerate(enum_titles):

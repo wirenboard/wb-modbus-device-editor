@@ -4,9 +4,9 @@ import tkinter.scrolledtext as scrolltext
 from datetime import datetime
 from tkinter import filedialog, ttk
 
+import scroll_frame
 import serial.tools.list_ports
-
-from . import scroll_frame
+import widgets
 
 
 class UiManager:
@@ -21,9 +21,13 @@ class UiManager:
     btn_open_template = None
 
     def __init__(self):
-        self.win = tkinter.Tk()
-        self.win.title("Python Modbus Device Editor")
-        self.win.geometry("1490x750")
+        self.window = tkinter.Tk()
+        self.window.title("Python Modbus Device Editor")
+        self.window.geometry("1490x750")
+
+        self.parametrized_widgets = {}
+        self.modbus_widgets = {}
+        self.window_widgets = {}
 
         style = ttk.Style(self.win)
         style.theme_use("clam")
@@ -43,182 +47,141 @@ class UiManager:
             },
         )
 
-        # Верхняя часть окна с настройками подключения
-        top_frame = self.create_frame(
-            parent=self.win,
-            id="nodel_top_frame",
-            side=tkinter.TOP,
-            fill=tkinter.X,
-            expand=False,
-            height=50,
+        self.top_frame = widgets.Frame(
+            self.window, height=50, opts={"side": tkinter.TOP, "fill": tkinter.X, "expand": False}
         )
-
-        mb_actions = self.create_group(
-            parent=top_frame,
-            id="nodel_mb_actions",
-            title="Чтение/запись параметров",
-            side=tkinter.RIGHT,
-            fill=tkinter.BOTH,
-            expand=False,
+        self.io_actions = widgets.Group(
+            self.top_frame,
+            text="Чтение/запись параметров",
+            relief=tkinter.GROOVE,
+            opts={"side": tkinter.RIGHT, "fill": tkinter.BOTH, "expand": False},
         )
-
-        self.mb_slave_id = self.create_spinbox(
-            parent=mb_actions,
-            id="nodel_mb_slave_id",
+        self.slave_id = widgets.Spinbox(
+            self.io_actions,
             title="Адрес",
-            min_=0,
-            max_=255,
+            minimum=0,
+            maximum=255,
             value_type="int",
             default=1,
             width=4,
             description=None,
-            side=tkinter.LEFT,
+            opts={"side": tkinter.LEFT},
         )
-
-        self.btn_open_template = self.create_button(
-            parent=mb_actions,
-            id="nodel_btn_open_template",
-            title="Открыть шаблон",
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+        self.btn_open_template = widgets.Button(
+            self.io_actions,
+            text="Открыть шаблон",
+            command=None,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        self.btn_read_params = self.create_button(
-            parent=mb_actions,
-            id="nodel_btn_read_params",
-            title="Читать параметры",
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+        self.btn_read_params = widgets.Button(
+            self.io_actions,
+            text="Читать параметры",
+            command=None,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        self.btn_write_params = self.create_button(
-            parent=mb_actions,
-            id="nodel_btn_write_params",
-            title="Записать параметры",
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+        self.btn_write_params = widgets.Button(
+            self.io_actions,
+            text="Записать параметры",
+            command=None,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        mb_settings = self.create_group(
-            parent=top_frame,
-            id="nodel_mb_settings",
-            title="Настройки подключения",
-            side=tkinter.RIGHT,
-            fill=tkinter.BOTH,
-            expand=True,
+        self.modbus_settings = widgets.Group(
+            self.top_frame,
+            text="Настройки подключения",
+            relief=tkinter.GROOVE,
+            opts={"side": tkinter.RIGHT, "fill": tkinter.BOTH, "expand": True},
         )
-
-        mb_mode = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_mode",
+        self.modbus_mode = widgets.Combobox(
+            self.modbus_settings,
             title="Режим",
-            dic=self.get_mode_dic(),
+            values_enum=self.get_mode_enum(),
             default="RTU",
             width=12,
             selected_func=self.mod_selected,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        self.create_rtu_settings(mb_settings)
-
-        # Нижняя часть окна
-        bottom_frame = self.create_frame(
-            parent=self.win, id="nodel_bottom_frame", side=tkinter.TOP, fill=tkinter.BOTH, expand=True
-        )
-
-        # Левый фрейм
-        self.left_frame = self.create_group(
-            parent=bottom_frame,
-            id="nodel_left_frame",
-            title="Настройки устройства",
-            side=tkinter.LEFT,
-            fill=tkinter.BOTH,
-            expand=True,
-        )
-
-        self.notebook = self.create_notebook(
-            parent=self.left_frame,
-            id="nodel_params_notebook",
-            side=tkinter.TOP,
-            fill=tkinter.BOTH,
-            expand=True,
-        )
-
-        # Правый фрейм
-        right_frame = self.create_group(
-            parent=bottom_frame,
-            id="nodel_right_frame",
-            title="Журнал",
-            side=tkinter.LEFT,
-            fill=tkinter.Y,
-        )
-
-        self.log = self.create_scrolled_text(
-            parent=right_frame,
-            id="nodel_log",
-            width=50,
-            side=tkinter.LEFT,
-            fill=tkinter.BOTH,
-            expand=True,
-        )
-        self.log.configure(state="disabled")
-
-    def create_rtu_settings(self, mb_settings):
-        mb_port = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_rtu_port",
+        self.modbus_rtu_port = widgets.Combobox(
+            self.modbus_settings,
             title="Порт",
-            dic=self.get_ports(),
+            values_enum=self.get_ports_enum(),
             default=None,
             width=40,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        mb_baudrate = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_rtu_baudrate",
+        self.modbus_rtu_baudrate = widgets.Combobox(
+            self.modbus_settings,
             title="Скорость обмена",
-            dic=self.gen_baudrate_dic(),
+            values_enum=self.get_baudrate_enum(),
             default=9600,
             width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        mb_bytesize = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_rtu_bytesize",
+        self.modbus_rtu_bytesize = widgets.Combobox(
+            self.modbus_settings,
             title="Биты данных",
-            dic=self.gen_bytesize_dic(),
+            values_enum=self.get_bytesize_enum(),
             default=8,
             width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        mb_parity = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_rtu_parity",
+        self.modbus_rtu_parity = widgets.Combobox(
+            self.modbus_settings,
             title="Четность",
-            dic=self.gen_parity_dic(),
+            values_enum=self.get_parity_enum(),
             default="N",
             width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
-
-        mb_stopbits = self.create_combobox(
-            parent=mb_settings,
-            id="nodel_mb_rtu_stopbits",
+        self.modbus_rtu_stopbits = widgets.Combobox(
+            self.modbus_settings,
             title="Стоп биты",
-            dic=self.gen_stopbits_dic(),
+            values_enum=self.get_stopbits_enum(),
             default=2,
             width=8,
-            side=tkinter.LEFT,
-            anchor=tkinter.SW,
+            opts={"side": tkinter.LEFT, "anchor": tkinter.SW},
         )
+        self.modbus_tcp_ip = widgets.TextInput(
+            self.modbus_settings,
+            title="IP",
+            width=23,
+            validation_func=self.validate_ipv4,
+            opts={"side": tkinter.LEFT},
+        )
+        self.modbus_tcp_port = widgets.Spinbox(
+            self.modbus_settings,
+            title="Порт",
+            minimum=1,
+            maximum=65535,
+            value_type="int",
+            default=23,
+            width=4,
+            description=None,
+            opts={"side": tkinter.LEFT},
+        )
+
+        self.bottom_frame = widgets.Frame(
+            self.window, opts={"side": tkinter.TOP, "fill": tkinter.BOTH, "expand": True}
+        )
+        self.device_settings = widgets.Group(
+            self.bottom_frame,
+            text="Настройки устройства",
+            relief=tkinter.GROOVE,
+            opts={"side": tkinter.LEFT, "fill": tkinter.BOTH, "expand": True},
+        )
+        self.notebook = widgets.Notebook(
+            self.device_settings, opts={"side": tkinter.TOP, "fill": tkinter.BOTH, "expand": True}
+        )
+        self.journal = widgets.Group(
+            self.bottom_frame,
+            text="Журнал",
+            relief=tkinter.GROOVE,
+            opts={"side": tkinter.LEFT, "fill": tkinter.Y},
+        )
+        self.journal_logger = widgets.ScrolledText(
+            self.journal, width=50, opts={"side": tkinter.LEFT, "fill": tkinter.BOTH, "expand": True}
+        )
+
+        self.journal_logger.configure(state="disabled")
 
     def create_tcp_settings(self, mb_settings):
         self.create_text_input(
@@ -249,13 +212,16 @@ class UiManager:
         widget.pack_info = self.get_pack_info(widget)
         widget.type = widget_type
         widget.visible = True
+        widget.conditions = []
         self.widgets[widget_id] = widget
 
     def write_log(self, text):
-        self.log.configure(state="normal")
-        res = self.log.insert(tkinter.END, "{} | {} \n".format(f"{datetime.now():%H:%M:%S}", text))
-        self.log.configure(state="disabled")
-        self.log.see("end")
+        self.journal_logger.configure(state="normal")
+        res = self.ljournal_loggerog.insert(
+            tkinter.END, "{} | {} \n".format(f"{datetime.now():%H:%M:%S}", text)
+        )
+        self.journal_logger.configure(state="disabled")
+        self.journal_logger.see("end")
         return 0
 
     def create_frame(self, parent, id, side, fill, expand, **args):
@@ -489,6 +455,22 @@ class UiManager:
         else:
             return None
 
+    def get_widget_value(self, widget):
+        if widget.type in ["spinbox", "combobox"] and not widget.visible:
+            return
+
+        if widget.type == "spinbox":
+            return widget.get()
+
+        if widget.type == "combobox":
+            value = widget.get()
+            dic = widget.dic
+            try:
+                index = dic["enum_titles"].index(value)
+                return dic["enum"][index]
+            except ValueError:
+                pass
+
     def get_values(self):
         widgets = self.widgets
         values = {}
@@ -609,30 +591,57 @@ class UiManager:
 
         return {"enum": enum, "enum_titles": enum_titles}
 
+    def get_ports_enum(self):
+        result = {}
+        ports = list(serial.tools.list_ports.comports())
+        for port, desc, hwid in sorted(ports):
+            result[port] = f"{port}: {desc}"
+
+        return result
+
     def gen_baudrate_dic(self):
         enum = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
         enum_titles = ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
         return {"enum": enum, "enum_titles": enum_titles}
+
+    def get_baudrate_enum(self):
+        items = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
+        return {item: str(item) for item in items}
 
     def gen_bytesize_dic(self):
         enum = [5, 6, 7, 8]
         enum_titles = ["5", "6", "7", "8"]
         return {"enum": enum, "enum_titles": enum_titles}
 
+    def get_bytesize_enum(self):
+        items = [5, 6, 7, 8]
+        return {item: str(item) for item in items}
+
     def gen_parity_dic(self):
         enum = ["N", "E", "O"]
         enum_titles = ["N", "E", "O"]
         return {"enum": enum, "enum_titles": enum_titles}
+
+    def get_parity_enum(self):
+        items = ["N", "E", "O"]
+        return {item: item for item in items}
 
     def gen_stopbits_dic(self):
         enum = [1, 2]
         enum_titles = ["1", "2"]
         return {"enum": enum, "enum_titles": enum_titles}
 
+    def get_stopbits_enum(self):
+        items = [1, 2]
+        return {item: str(item) for item in items}
+
     def get_mode_dic(self):
         enum = ["RTU", "TCP", "RTU over TCP"]
         enum_titles = ["RTU", "TCP", "RTU over TCP"]
         return {"enum": enum, "enum_titles": enum_titles}
+
+    def get_mode_enum(self):
+        return {"RTU": "RTU", "TCP": "TCP", "RTU over TCP": "RTU over TCP"}
 
     def validate_ipv4(self, ip):
         try:
