@@ -11,6 +11,10 @@ import requests
 import semantic_version
 
 
+class TemplateException(Exception):
+    pass
+
+
 class Template:
     def __init__(self, template_path, full_read: bool):
         self._template_path = template_path
@@ -39,7 +43,16 @@ class Template:
         if source == None or isinstance(source, dict):
             return source
 
-        return {item.pop("id"): item for item in source}
+        result = {}
+        for item in source:
+            if result.get(item["id"]) is not None:
+                raise TemplateException(
+                    "К сожалению, в настоящее время использование этого шаблона не поддерживается."
+                )
+            id = item.pop("id")
+            result[id] = item
+
+        return result
 
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
