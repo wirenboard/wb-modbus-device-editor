@@ -103,9 +103,9 @@ class App:
     def open_template_callback(self, result):
         self._template = result
 
-        self.create_interface()
-
         self.ui.write_log(f"Чтение шаблона завершено.")
+
+        self.create_interface()
 
         with self.io_lock:
             self.io_running = False
@@ -122,81 +122,73 @@ class App:
             for id, parameter in parameters.items():
                 self.create_widget(id, parent, parameter)
 
-        # создаём вкладки из групп без поля group
-        if self.create_pages():
+        try:
+            # создаём вкладки из групп без поля group
+            self.create_pages()
             # создаём группы внутри вкладок
-            if self.create_groups():
-                self.widgets_hide_by_condition()
+            self.create_groups()
+            self.widgets_hide_by_condition()
+        except AttributeError as e:
+            self.ui.delete_widgets()
+            self.ui.write_log("К сожалению, в настоящее время использование этого шаблона не поддерживается.")
+        except Exception as e:
+            self.ui.write_log("Ошибка:")
+            self.ui.write_log(traceback.format_exc())
 
     # создание страниц
     def create_pages(self):
-        self.ui.write_log("Создаю вкладки.")
 
-        try:
-            groups = self._template.properties["device"]["groups"]
-            if groups is not None:
+        groups = self._template.properties["device"]["groups"]
+        if groups is not None:
 
-                for id, group in groups.items():
-                    # если у группы нет родителя, то создаём вкладку
-                    if not group.get("group"):
-                        title = self._template.translate(group["title"])
-                        group_widget = self.ui.create_tab(id, title)
-                        group_widget.condition = group.get("condition")
-
-            return True
-        except Exception as e:
-            self.ui.write_log("Ошибка:")
-            self.ui.write_log(traceback.format_exc())
-            return False
+            for id, group in groups.items():
+                # если у группы нет родителя, то создаём вкладку
+                if not group.get("group"):
+                    title = self._template.translate(group["title"])
+                    group_widget = self.ui.create_tab(id, title)
+                    group_widget.condition = group.get("condition")
 
     # создание групп
     def create_groups(self):
-        self.ui.write_log("Создаю группы.")
 
         groups = self._template.properties["device"]["groups"]
 
-        try:
-            for id, group in groups.items():
-                title = self._template.translate(group["title"])
-                parent_id = group.get("group")
-                parent = self.ui.get_widget(parent_id)
+        for id, group in groups.items():
+            title = self._template.translate(group["title"])
+            parent_id = group.get("group")
+            parent = self.ui.get_widget(parent_id)
 
-                # а тут магия распределения групп по вкладкам
-                if parent != None:  # если у группы нет родителя, то есть это у нас вкладка, то
-                    # проверяем, не вышли ли за пределы максимального числа колонок
-                    if parent.curr_col < self.max_col:
-                        # если не вышли, то получаем текущий фрейм (строку) и потом увеличиваем счётчик колонок
-                        curr_frame = self.get_current_frame(parent)
-                        parent.curr_col += 1
-                    else:
-                        # если счётчик колонок равен максимальном числу колонок на вкладке, то
-                        # создаём новую строку, обнуляем счётчик колонок и увеличиваем счётчик строк
-                        curr_frame = self.ui.create_row(parent, parent_id + "_row")
-                        parent.curr_frame = curr_frame
-                        parent.curr_col = 0
-                        parent.curr_row += 1
-
-                    # создаём новую группу с учётом магии выше
-                    group_widget = self.ui.create_group(
-                        curr_frame, id, title, side=tkinter.LEFT, anchor=tkinter.NW
-                    )
-                    # добавляем поле condition — это для того, чтобы понимать, надо ли показывать
-                    # эту группу при выбранных параметрах
-                    group_widget.condition = group.get("condition")
+            # а тут магия распределения групп по вкладкам
+            if parent != None:  # если у группы нет родителя, то есть это у нас вкладка, то
+                # проверяем, не вышли ли за пределы максимального числа колонок
+                if parent.curr_col < self.max_col:
+                    # если не вышли, то получаем текущий фрейм (строку) и потом увеличиваем счётчик колонок
+                    curr_frame = self.get_current_frame(parent)
+                    parent.curr_col += 1
                 else:
-                    # а если родитель у группы есть, то получаем текущий виджет с нужным id
-                    group_widget = self.ui.get_widget(id)
+                    # если счётчик колонок равен максимальном числу колонок на вкладке, то
+                    # создаём новую строку, обнуляем счётчик колонок и увеличиваем счётчик строк
+                    curr_frame = self.ui.create_row(parent, parent_id + "_row")
+                    parent.curr_frame = curr_frame
+                    parent.curr_col = 0
+                    parent.curr_row += 1
 
-                # если виджет группы существует — создаём параметры в ней
-                if group_widget is not None:
-                    self.create_params(id, group_widget)
-                else:
-                    print("Виджет для группы {} не существует".format(id))
-            return True
-        except Exception as e:
-            self.ui.write_log("Ошибка:")
-            self.ui.write_log(traceback.format_exc())
-            return False
+                # создаём новую группу с учётом магии выше
+                group_widget = self.ui.create_group(
+                    curr_frame, id, title, side=tkinter.LEFT, anchor=tkinter.NW
+                )
+                # добавляем поле condition — это для того, чтобы понимать, надо ли показывать
+                # эту группу при выбранных параметрах
+                group_widget.condition = group.get("condition")
+            else:
+                # а если родитель у группы есть, то получаем текущий виджет с нужным id
+                group_widget = self.ui.get_widget(id)
+
+            # если виджет группы существует — создаём параметры в ней
+            if group_widget is not None:
+                self.create_params(id, group_widget)
+            else:
+                print("Виджет для группы {} не существует".format(id))
 
     def create_params(self, group_id, group_widget):
         parameters = self._template.get_parameters_by_group_id(group_id)
