@@ -8,5 +8,6 @@ Homepage: https://github.com/wirenboard/wb-modbus-device-editor
 
 Package: wb-modbus-device-editor
 Architecture: all
-Depends: ${misc:Depends}, python3:any (>= 3.9), python3-tk, python3-appdirs, ${python3:Depends}
+Depends: ${python3:Depends}, ${misc:Depends}, python3-tk, python3-appdirs
 Description: Wiren Board modbus device editor
+ GUI application to edit Wiren Board modbus devices.
