@@ -128,9 +128,6 @@ class App:
             # создаём группы внутри вкладок
             self.create_groups()
             self.widgets_hide_by_condition()
-        except AttributeError as e:
-            self.ui.delete_widgets()
-            self.ui.write_log("К сожалению, в настоящее время использование этого шаблона не поддерживается.")
         except Exception as e:
             self.ui.write_log("Ошибка:")
             self.ui.write_log(traceback.format_exc())
@@ -161,6 +158,12 @@ class App:
             # а тут магия распределения групп по вкладкам
             if parent != None:  # если у группы нет родителя, то есть это у нас вкладка, то
                 # проверяем, не вышли ли за пределы максимального числа колонок
+
+                    # инициализируем номера колонок и строк
+                if not hasattr(parent, "curr_col"):
+                    parent.curr_col = 0
+                    parent.curr_row = 0
+
                 if parent.curr_col < self.max_col:
                     # если не вышли, то получаем текущий фрейм (строку) и потом увеличиваем счётчик колонок
                     curr_frame = self.get_current_frame(parent)

@@ -45,14 +45,101 @@ class Template:
 
         result = {}
         for item in source:
-            if result.get(item["id"]) is not None:
-                raise TemplateException(
-                    "К сожалению, в настоящее время использование этого шаблона не поддерживается."
-                )
             id = item.pop("id")
             result[id] = item
 
         return result
+
+  
+    import re
+    from typing import List, Dict, Any
+
+    def convert_parameters_list_to_dict(self, source: Any) -> Any:
+        """
+        Преобразует список параметров в {new_id: param_dict}, при этом:
+        - Генерирует уникальные new_id вида old_id_1, old_id_2, …
+        - В condition убирает ВСЕ упоминания старых id:
+            * isDefined(old_id) → либо "('new_id' in locals())" (singleton)
+                            либо "( 'n1' in locals() or 'n2' in locals() … )"
+            * Сам old_id (в equality/логике) → либо "new_id" (singleton)
+                                            либо "(new1 or new2 or …)" (дубликаты)
+        """
+        # 1) Если None или dict — возвращаем без изменений
+        if source is None or isinstance(source, dict):
+            return source
+
+        # 2) Ожидаем список параметров
+        if not isinstance(source, list):
+            raise TypeError(f"Ожидался список параметров или dict, получили {type(source)}")
+
+        # 3) Считаем, сколько раз встречается каждый old_id
+        counts: Dict[str, int] = {}
+        for item in source:
+            old = item.get("id")
+            if not old:
+                raise ValueError("Каждый параметр должен иметь поле 'id'")
+            counts[old] = counts.get(old, 0) + 1
+
+        # 4) Строим полную мапу old_id → [old_id_1, old_id_2, …]
+        mapping_all: Dict[str, List[str]] = {
+            old: [f"{old}_{i}" for i in range(1, cnt + 1)]
+            for old, cnt in counts.items()
+        }
+
+        # 5) Самая магия: клонируем, делаем new_id и «раскрашиваем» условие
+        local_counts: Dict[str, int] = {}
+        new_params: List[Dict[str, Any]] = []
+
+        for item in source:
+            old = item["id"]
+            # порядковый номер клона
+            idx = local_counts.setdefault(old, 0)
+            new_id = mapping_all[old][idx]
+            local_counts[old] += 1
+
+            clone = item.copy()
+            clone["id"] = new_id
+
+            cond = clone.get("condition")
+            if cond:
+                # 5a) isDefined(old) → объединение по new_id
+                for oid, nids in mapping_all.items():
+                    # шаблон точно на isDefined(old)
+                    cond = re.sub(
+                        rf"isDefined\(\s*{re.escape(oid)}\s*\)",
+                        # singleton?
+                        (f"('{nids[0]}' in locals())"
+                        if len(nids) == 1
+                        else # или or-цепочка всех вариантов
+                        "(" + " or ".join(f"'{nid}' in locals()" for nid in nids) + ")"),
+                        cond
+                    )
+
+                # 5b) замена самих вхождений old → new (или цепочка new)
+                for oid, nids in mapping_all.items():
+                    repl = (
+                        nids[0]
+                        if len(nids) == 1
+                        else "(" + " or ".join(nids) + ")"
+                    )
+                    cond = re.sub(
+                        rf"(?<!\w){re.escape(oid)}(?!\w)",
+                        repl,
+                        cond
+                    )
+
+                clone["condition"] = cond
+
+            new_params.append(clone)
+
+        # 6) Собираем итоговый словарь и убираем id из значений
+        result: Dict[str, Dict[str, Any]] = {}
+        for p in new_params:
+            nid = p.pop("id")
+            result[nid] = p
+
+        return result
+
 
     def _get_template_full_info(self, template_path):
         with open(template_path, encoding="utf-8") as json_template:
@@ -64,7 +151,7 @@ class Template:
                 "device": {
                     "name": dict_info["device"]["name"],
                     "groups": self._convert_list_to_dict(groups),
-                    "parameters": self._convert_list_to_dict(parameters),
+                    "parameters": self.convert_parameters_list_to_dict(parameters),
                     "translations": dict_info["device"].get("translations"),
                     "setup": dict_info["device"].get("setup", None),
                 },

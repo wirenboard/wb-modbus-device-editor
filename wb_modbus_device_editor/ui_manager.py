@@ -494,8 +494,8 @@ class UiManager:
         values = {}
 
         for key, item in widgets.items():
-            if item.type in ["spinbox", "combobox"] and not item.visible:
-                continue
+            # if item.type in ["spinbox", "combobox"] and not item.visible:
+            #     continue
 
             if item.type == "spinbox":
                 values.update({key: item.get()})
