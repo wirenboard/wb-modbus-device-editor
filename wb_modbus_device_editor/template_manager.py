@@ -9,7 +9,7 @@ import commentjson
 import jinja2
 import requests
 import semantic_version
-
+from typing import Dict, List, Any
 
 class TemplateException(Exception):
     pass
